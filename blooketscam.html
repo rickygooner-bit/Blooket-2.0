@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockBuster Ultimate</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Config & Styles -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4aa8ff',
+                        secondary: '#2c3e50',
+                        accent: '#a255ff',
+                        gold: '#fbbf24',
+                        goldDark: '#b45309',
+                        success: '#22c55e',
+                        danger: '#ef4444',
+                        surface: '#ffffff',
+                    },
+                    fontFamily: {
+                        sans: ['Nunito', 'sans-serif'],
+                    },
+                    animation: {
+                        'bounce-short': 'bounce 0.5s infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f3f4f6;
+            overflow-x: hidden;
+            user-select: none;
+        }
+        .blook-shadow {
+            box-shadow: 0px 5px 0px rgba(0,0,0,0.2);
+            transition: all 0.1s;
+        }
+        .blook-shadow:active {
+            transform: translateY(3px);
+            box-shadow: 0px 2px 0px rgba(0,0,0,0.2);
+        }
+        .game-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .scanline {
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        (function() { // IIFE for scope protection
+
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- EXPANDED DATA ---
+
+        const PREMADE_SETS = [
+            // --- MATH ---
+            {
+                id: 'math-y1', category: 'Math', title: 'Year 1 Math', desc: 'Basic Addition & Subtraction', 
+                questions: [
+                    { q: '5 + 3 = ?', a: ['8', '7', '9', '6'], correct: 0 },
+                    { q: '10 - 4 = ?', a: ['6', '5', '4', '7'], correct: 0 },
+                    { q: '2 + 2 = ?', a: ['4', '22', '5', '3'], correct: 0 },
+                    { q: 'Which is biggest?', a: ['10', '8', '5', '2'], correct: 0 },
+                    { q: '6 + 0 = ?', a: ['6', '0', '60', '5'], correct: 0 },
+                    { q: 'Double 3 is?', a: ['6', '33', '9', '12'], correct: 0 },
+                    { q: '1 + 1 + 1 = ?', a: ['3', '111', '4', '2'], correct: 0 },
+                    { q: '10 + 10 = ?', a: ['20', '100', '10', '30'], correct: 0 },
+                ]
+            },
+            {
+                id: 'math-y4', category: 'Math', title: 'Year 4 Math', desc: 'Multiplication & Division', 
+                questions: [
+                    { q: '7 x 3 = ?', a: ['21', '24', '14', '10'], correct: 0 },
+                    { q: '36 / 6 = ?', a: ['6', '8', '4', '12'], correct: 0 },
+                    { q: '9 x 9 = ?', a: ['81', '99', '18', '72'], correct: 0 },
+                    { q: 'Half of 50?', a: ['25', '20', '100', '15'], correct: 0 },
+                    { q: '4 x 12 = ?', a: ['48', '42', '40', '52'], correct: 0 },
+                    { q: '100 / 4 = ?', a: ['25', '20', '50', '10'], correct: 0 },
+                ]
+            },
+            {
+                id: 'math-alg', category: 'Math', title: 'Algebra Basics', desc: 'Solve for X', 
+                questions: [
+                    { q: 'If x + 5 = 10, x = ?', a: ['5', '15', '2', '50'], correct: 0 },
+                    { q: 'If 2x = 12, x = ?', a: ['6', '24', '10', '14'], correct: 0 },
+                    { q: 'If x - 3 = 7, x = ?', a: ['10', '4', '21', '5'], correct: 0 },
+                    { q: 'Solve: 3x + 1 = 10', a: ['3', '2', '9', '4'], correct: 0 },
+                ]
+            },
+            // --- SCIENCE ---
+            {
+                id: 'sci-bio', category: 'Science', title: 'Biology Basics', desc: 'Life & Plants', 
+                questions: [
+                    { q: 'What do plants use to make food?', a: ['Sunlight', 'Sand', 'Rocks', 'Wind'], correct: 0 },
+                    { q: 'The powerhouse of the cell is?', a: ['Mitochondria', 'Nucleus', 'Ribosome', 'Wall'], correct: 0 },
+                    { q: 'Humans breathe in...', a: ['Oxygen', 'Carbon Dioxide', 'Helium', 'Nitrogen'], correct: 0 },
+                    { q: 'Which is a mammal?', a: ['Whale', 'Shark', 'Crocodile', 'Eagle'], correct: 0 },
+                    { q: 'Red liquid in your body?', a: ['Blood', 'Water', 'Juice', 'Plasma'], correct: 0 },
+                ]
+            },
+            {
+                id: 'sci-space', category: 'Science', title: 'Space', desc: 'Planets & Stars', 
+                questions: [
+                    { q: 'Closest planet to the sun?', a: ['Mercury', 'Venus', 'Mars', 'Earth'], correct: 0 },
+                    { q: 'The Red Planet is?', a: ['Mars', 'Jupiter', 'Saturn', 'Sun'], correct: 0 },
+                    { q: 'Our galaxy is called?', a: ['Milky Way', 'Snickers', 'Andromeda', 'Galaxy One'], correct: 0 },
+                    { q: 'The sun is a...', a: ['Star', 'Planet', 'Moon', 'Asteroid'], correct: 0 },
+                ]
+            },
+            // --- GEOGRAPHY ---
+            {
+                id: 'geo-cap', category: 'Geography', title: 'World Capitals', desc: 'Name the Capital', 
+                questions: [
+                    { q: 'Capital of France?', a: ['Paris', 'London', 'Rome', 'Berlin'], correct: 0 },
+                    { q: 'Capital of Japan?', a: ['Tokyo', 'Kyoto', 'Osaka', 'Seoul'], correct: 0 },
+                    { q: 'Capital of USA?', a: ['Washington DC', 'New York', 'LA', 'Texas'], correct: 0 },
+                    { q: 'Capital of Australia?', a: ['Canberra', 'Sydney', 'Melbourne', 'Perth'], correct: 0 },
+                    { q: 'Capital of Egypt?', a: ['Cairo', 'Alexandria', 'Nile', 'Giza'], correct: 0 },
+                ]
+            },
+            // --- ENGLISH ---
+            {
+                id: 'eng-gram', category: 'English', title: 'Grammar', desc: 'Parts of Speech', 
+                questions: [
+                    { q: 'Which is a Verb?', a: ['Run', 'Blue', 'Table', 'Happy'], correct: 0 },
+                    { q: 'Which is a Noun?', a: ['Cat', 'Quickly', 'Jump', 'Red'], correct: 0 },
+                    { q: 'Which is an Adjective?', a: ['Beautiful', 'Sing', 'Boy', 'Under'], correct: 0 },
+                    { q: 'Past tense of "Go"?', a: ['Went', 'Goed', 'Gone', 'Going'], correct: 0 },
+                ]
+            },
+            // --- TECH ---
+            {
+                id: 'tech-basic', category: 'Tech', title: 'Computer Basics', desc: 'Hardware & Software', 
+                questions: [
+                    { q: 'Brain of the computer?', a: ['CPU', 'RAM', 'Mouse', 'Fan'], correct: 0 },
+                    { q: 'Short term memory?', a: ['RAM', 'HDD', 'SSD', 'USB'], correct: 0 },
+                    { q: 'HTML is used for?', a: ['Websites', 'Games', 'Cleaning', 'Calculators'], correct: 0 },
+                    { q: 'Does Wi-Fi need wires?', a: ['No', 'Yes', 'Maybe', 'Only sometimes'], correct: 0 },
+                ]
+            }
+        ];
+
+        const BOTS = [
+            { id: 1, name: "Dino", icon: "🦖", gold: 0 },
+            { id: 2, name: "Uni", icon: "🦄", gold: 0 },
+            { id: 3, name: "Foxy", icon: "🦊", gold: 0 },
+            { id: 4, name: "Alien", icon: "👽", gold: 0 },
+            { id: 5, name: "Ghost", icon: "👻", gold: 0 },
+            { id: 6, name: "Robot", icon: "🤖", gold: 0 },
+            { id: 7, name: "Ninja", icon: "🥷", gold: 0 },
+        ];
+
+        // --- SHARED COMPONENTS ---
+
+        const Button = ({ children, onClick, color = "primary", size = "md", className = "", disabled = false }) => {
+            const colors = {
+                primary: "bg-blue-500 hover:bg-blue-600 border-blue-700 text-white",
+                success: "bg-green-500 hover:bg-green-600 border-green-700 text-white",
+                warning: "bg-amber-400 hover:bg-amber-500 border-amber-600 text-white text-shadow-sm",
+                danger: "bg-red-500 hover:bg-red-600 border-red-700 text-white",
+                purple: "bg-purple-500 hover:bg-purple-600 border-purple-700 text-white",
+                gray: "bg-slate-200 hover:bg-slate-300 border-slate-400 text-slate-700",
+                dark: "bg-slate-700 hover:bg-slate-800 border-slate-900 text-white",
+            };
+            const sizes = {
+                sm: "px-3 py-1 text-sm border-b-2",
+                md: "px-6 py-3 text-lg font-bold border-b-4",
+                lg: "px-8 py-4 text-2xl font-black border-b-6",
+            };
+            
+            return (
+                <button 
+                    onClick={onClick}
+                    disabled={disabled}
+                    className={`${colors[color]} ${sizes[size]} rounded-xl blook-shadow transform transition-transform flex items-center justify-center gap-2 ${className} ${disabled ? 'opacity-50 cursor-not-allowed grayscale' : 'active:translate-y-1 active:border-b-0 active:shadow-none'}`}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        const PlayerSelector = ({ bots, onSelect, title }) => (
+            <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl p-6 max-w-3xl w-full animate-fade-in border-4 border-slate-300">
+                    <h2 className="text-3xl font-black text-center mb-6 text-slate-700">{title}</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {bots.map(b => (
+                            <div key={b.id} onClick={() => onSelect(b)} className="cursor-pointer bg-slate-100 hover:bg-blue-100 hover:border-blue-400 border-2 border-slate-200 rounded-xl p-4 flex flex-col items-center transition-colors">
+                                <div className="text-4xl mb-2">{b.icon}</div>
+                                <div className="font-bold text-lg">{b.name}</div>
+                                <div className="text-sm font-bold text-amber-600">
+                                    {b.gold} {title.includes("Crypto") ? "⚡" : "💰"}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-6 text-center text-slate-400 text-sm">Select a player to target</div>
+                </div>
+            </div>
+        );
+
+        // --- SCREENS ---
+
+        const Dashboard = ({ customSets, onSelectSet }) => {
+            const allSets = [...PREMADE_SETS, ...customSets];
+            const categories = [...new Set(allSets.map(s => s.category || 'Custom'))];
+            const [filter, setFilter] = useState('All');
+
+            return (
+                <div className="p-6 max-w-6xl mx-auto w-full game-container">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-3xl font-black text-slate-700">Select a Set</h2>
+                        <div className="flex gap-2 overflow-x-auto pb-2">
+                            <button onClick={() => setFilter('All')} className={`px-4 py-1 rounded-full text-sm font-bold ${filter === 'All' ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600'}`}>All</button>
+                            {categories.map(c => (
+                                <button key={c} onClick={() => setFilter(c)} className={`px-4 py-1 rounded-full text-sm font-bold ${filter === c ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600'}`}>{c}</button>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {allSets.filter(s => filter === 'All' || (s.category || 'Custom') === filter).map((set, idx) => (
+                            <div key={idx} className="bg-white rounded-xl border-4 border-slate-200 overflow-hidden hover:border-purple-400 transition-colors group cursor-pointer flex flex-col shadow-sm" onClick={() => onSelectSet(set)}>
+                                <div className="h-24 bg-slate-100 flex items-center justify-center text-3xl border-b-2 border-slate-100 group-hover:bg-purple-50 transition-colors">
+                                    {set.category === 'Math' ? '📐' : set.category === 'Science' ? '🧪' : set.category === 'Geography' ? '🌍' : set.category === 'Tech' ? '💻' : set.category === 'English' ? '📖' : '📝'}
+                                </div>
+                                <div className="p-4 flex-1 flex flex-col">
+                                    <div className="flex justify-between items-start">
+                                        <h3 className="font-bold text-lg mb-1 leading-tight">{set.title}</h3>
+                                        <span className="text-[10px] font-bold uppercase bg-slate-200 text-slate-600 px-2 py-0.5 rounded">{set.category || 'Custom'}</span>
+                                    </div>
+                                    <p className="text-slate-500 text-xs mb-4 flex-1 mt-1">{set.desc}</p>
+                                    <div className="flex justify-between items-center mt-auto">
+                                        <span className="text-xs font-bold text-slate-400">{set.questions.length} Qs</span>
+                                        <Button size="sm" color="primary">Play</Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const SetupGame = ({ set, onStart, onBack }) => {
+            const [time, setTime] = useState(5); // Minutes
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl border-4 border-slate-200 p-8 max-w-md w-full text-center shadow-xl">
+                        <h2 className="text-3xl font-black text-slate-700 mb-2">{set.title}</h2>
+                        <p className="text-slate-500 mb-8">Game Setup</p>
+
+                        <div className="mb-8">
+                            <label className="block text-sm font-bold text-slate-400 uppercase mb-2">Game Duration</label>
+                            <div className="grid grid-cols-2 gap-4">
+                                {[3, 5, 7, 10].map(t => (
+                                    <div key={t} onClick={() => setTime(t)} className={`cursor-pointer p-4 rounded-xl border-b-4 font-bold text-xl transition-all ${time === t ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-slate-100 border-slate-300 text-slate-500'}`}>
+                                        {t} Mins
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <Button color="gray" className="flex-1" onClick={onBack}>Back</Button>
+                            <Button color="success" className="flex-1" onClick={() => onStart(time)}>Start Game</Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const QuestionScreen = ({ question, onAnswer, total, current }) => {
+            const colors = ['bg-red-500 border-red-700', 'bg-blue-500 border-blue-700', 'bg-green-500 border-green-700', 'bg-yellow-500 border-yellow-600'];
+            const icons = ['🔺', '🔷', '🟩', '🟡'];
+
+            return (
+                <div className="flex flex-col items-center justify-center h-full p-4 max-w-4xl mx-auto w-full animate-fade-in">
+                    <div className="bg-white w-full p-5 rounded-xl border-b-4 border-slate-300 text-center mb-6 shadow-lg relative">
+                        <h2 className="text-2xl font-black text-slate-800">{question.q}</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+                        {question.a.map((ans, idx) => (
+                            <button 
+                                key={idx} 
+                                onClick={() => onAnswer(idx)}
+                                className={`${colors[idx % 4]} text-white text-lg font-bold p-5 rounded-lg border-b-4 shadow-md active:translate-y-1 active:border-b-0 active:shadow-none transition-all flex items-center gap-3`}
+                            >
+                                <span className="text-2xl opacity-80">{icons[idx % 4]}</span>
+                                <span className="text-left flex-1">{ans}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- GAME MODES ---
+
+        const GoldQuest = ({ set, timeLimit, onExit }) => {
+            const [state, setState] = useState('playing');
+            const [shuffledQuestions, setShuffledQuestions] = useState([]);
+            const [qIndex, setQIndex] = useState(0);
+            const [gold, setGold] = useState(0);
+            const [bots, setBots] = useState(BOTS.map(b => ({...b, gold: Math.floor(Math.random() * 50)})));
+            const [stats, setStats] = useState({ correct: 0, total: 0 });
+            const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
+            
+            // Interaction State
+            const [openedChest, setOpenedChest] = useState(null); 
+            const [chestContent, setChestContent] = useState(null);
+            const [showTargetSelector, setShowTargetSelector] = useState(false);
+            const [pendingAction, setPendingAction] = useState(null); // 'swap', 'steal10', 'steal25'
+
+            // Init shuffle
+            useEffect(() => {
+                setShuffledQuestions([...set.questions].sort(() => Math.random() - 0.5));
+            }, [set]);
+
+            // Timer
+            useEffect(() => {
+                if (state === 'finished') return;
+                const timer = setInterval(() => {
+                    setTimeLeft(prev => {
+                        if (prev <= 1) {
+                            setState('finished');
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        // Bot passive income logic
+                        if (prev % 5 === 0) {
+                             setBots(curr => curr.map(b => ({...b, gold: b.gold + Math.floor(Math.random() * 15)})));
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [state]);
+
+            const handleAnswer = (idx) => {
+                const currentQ = shuffledQuestions[qIndex];
+                const isCorrect = idx === currentQ.correct;
+                setStats(prev => ({ total: prev.total + 1, correct: isCorrect ? prev.correct + 1 : prev.correct }));
+
+                if(isCorrect) {
+                    setState('correct');
+                    setTimeout(() => setState('chest'), 800);
+                } else {
+                    setState('incorrect');
+                    setTimeout(nextQuestion, 1500);
+                }
+            };
+
+            const nextQuestion = () => {
+                // Loop questions
+                setQIndex(prev => (prev + 1) % shuffledQuestions.length);
+                setOpenedChest(null);
+                setChestContent(null);
+                setShowTargetSelector(false);
+                setPendingAction(null);
+                if(state !== 'finished') setState('playing');
+            };
+
+            const openChest = (chestIdx) => {
+                if(openedChest !== null) return;
+                setOpenedChest(chestIdx);
+                
+                // Enhanced Reward Logic
+                const r = Math.random();
+                let reward = {};
+                
+                // 40% Gold, 20% Multiplier, 20% Attack, 20% Loss/Nothing
+                if (r < 0.30) { reward = { type: 'gold', val: 10 + Math.floor(Math.random()*90) }; }
+                else if (r < 0.40) { reward = { type: 'triple', val: 0 }; } // Triple Gold
+                else if (r < 0.50) { reward = { type: 'double', val: 0 }; }
+                else if (r < 0.60) { reward = { type: 'swap', val: 0, action: true }; }
+                else if (r < 0.70) { reward = { type: 'steal25', val: 0, action: true }; }
+                else if (r < 0.80) { reward = { type: 'steal10', val: 0, action: true }; }
+                else if (r < 0.90) { reward = { type: 'lose25', val: 0 }; }
+                else { reward = { type: 'lose10', val: 0 }; }
+
+                setChestContent(reward);
+
+                // Apply Immediate Rewards
+                setTimeout(() => {
+                    if (reward.type === 'gold') { setGold(g => g + reward.val); setTimeout(nextQuestion, 1500); }
+                    else if (reward.type === 'double') { setGold(g => g * 2); setTimeout(nextQuestion, 1500); }
+                    else if (reward.type === 'triple') { setGold(g => g * 3); setTimeout(nextQuestion, 1500); }
+                    else if (reward.type === 'lose10') { setGold(g => Math.floor(g * 0.9)); setTimeout(nextQuestion, 1500); }
+                    else if (reward.type === 'lose25') { setGold(g => Math.floor(g * 0.75)); setTimeout(nextQuestion, 1500); }
+                    else if (reward.action) {
+                        // Needs target selection
+                        setPendingAction(reward.type);
+                        setTimeout(() => setShowTargetSelector(true), 1000);
+                    }
+                }, 1000);
+            };
+
+            const executeAction = (targetBot) => {
+                if (pendingAction === 'swap') {
+                    const myGold = gold;
+                    setGold(targetBot.gold);
+                    setBots(bots.map(b => b.id === targetBot.id ? {...b, gold: myGold} : b));
+                } else if (pendingAction === 'steal10') {
+                    const stolen = Math.floor(targetBot.gold * 0.10);
+                    setGold(gold + stolen);
+                    setBots(bots.map(b => b.id === targetBot.id ? {...b, gold: b.gold - stolen} : b));
+                } else if (pendingAction === 'steal25') {
+                    const stolen = Math.floor(targetBot.gold * 0.25);
+                    setGold(gold + stolen);
+                    setBots(bots.map(b => b.id === targetBot.id ? {...b, gold: b.gold - stolen} : b));
+                }
+                setShowTargetSelector(false);
+                setTimeout(nextQuestion, 1000);
+            };
+
+            if (!shuffledQuestions.length) return <div>Loading...</div>;
+            if(state === 'finished') return <GameOver score={gold} type="Gold" onExit={onExit} bots={bots} stats={stats} />;
+
+            return (
+                <div className="bg-amber-300 min-h-screen flex flex-col">
+                    {showTargetSelector && <PlayerSelector bots={bots} onSelect={executeAction} title={pendingAction === 'swap' ? "Swap Gold!" : "Steal Gold!"} />}
+
+                    {/* Header */}
+                    <div className="bg-amber-500 p-2 flex justify-between items-center text-white font-black px-4 border-b-4 border-amber-700 shadow-md sticky top-0 z-30">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onExit} className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm border-b-2 border-amber-900 active:border-b-0 active:translate-y-0.5">
+                                <i className="fas fa-home mr-1"></i> Exit
+                            </button>
+                            <div className="text-xl">💰 {gold}</div>
+                        </div>
+                        <div className="text-xl font-mono bg-black bg-opacity-20 px-3 rounded">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                    </div>
+
+                    {/* Main Area */}
+                    <div className="flex-1 relative flex flex-col justify-center">
+                        {state === 'playing' && <QuestionScreen question={shuffledQuestions[qIndex]} onAnswer={handleAnswer} />}
+                        
+                        {state === 'correct' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-90 z-10">
+                                <h1 className="text-5xl text-white font-black animate-bounce">CORRECT!</h1>
+                            </div>
+                        )}
+
+                        {state === 'incorrect' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-red-500 bg-opacity-90 z-10">
+                                <h1 className="text-5xl text-white font-black">WRONG!</h1>
+                            </div>
+                        )}
+
+                        {state === 'chest' && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 bg-opacity-90 z-20 p-4">
+                                <h2 className="text-3xl text-white font-black mb-6">Choose a Chest!</h2>
+                                <div className="flex gap-4 md:gap-8 justify-center w-full max-w-3xl">
+                                    {[0, 1, 2].map(i => (
+                                        <div key={i} onClick={() => openChest(i)} className={`w-32 h-32 md:w-40 md:h-40 cursor-pointer transition-transform ${openedChest === null ? 'hover:scale-105' : ''}`}>
+                                            {openedChest === i ? (
+                                                 <div className="w-full h-full flex items-center justify-center bg-yellow-200 rounded-xl border-4 border-yellow-500 animate-pulse">
+                                                    {chestContent ? (
+                                                        <div className="text-center transform scale-90">
+                                                            <div className="text-4xl mb-1">
+                                                                {chestContent.type === 'gold' && '💰'}
+                                                                {chestContent.type === 'triple' && '✖️3️⃣'}
+                                                                {chestContent.type === 'double' && '✖️2️⃣'}
+                                                                {chestContent.type === 'swap' && '🔄'}
+                                                                {chestContent.type === 'steal10' && '🔫'}
+                                                                {chestContent.type === 'steal25' && '💣'}
+                                                                {chestContent.type.includes('lose') && '📉'}
+                                                            </div>
+                                                            <div className="font-bold text-yellow-900 text-xs md:text-sm uppercase">
+                                                                {chestContent.type === 'gold' && `+${chestContent.val}`}
+                                                                {chestContent.type === 'triple' && `Triple!`}
+                                                                {chestContent.type === 'double' && `Double!`}
+                                                                {chestContent.type === 'swap' && `Swap!`}
+                                                                {chestContent.type === 'steal10' && `Steal 10%`}
+                                                                {chestContent.type === 'steal25' && `Steal 25%`}
+                                                                {chestContent.type === 'lose10' && `-10%`}
+                                                                {chestContent.type === 'lose25' && `-25%`}
+                                                            </div>
+                                                        </div>
+                                                    ) : "..."}
+                                                 </div>
+                                            ) : (
+                                                openedChest === null && <div className="w-full h-full bg-yellow-600 rounded-t-full border-b-8 border-yellow-800 shadow-2xl flex items-center justify-center text-3xl">🔒</div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Leaderboard Preview */}
+                    <div className="h-28 bg-slate-900 text-white p-3 overflow-y-auto text-sm">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                             <div className="bg-amber-500 px-3 py-1 rounded-full font-bold border-b-2 border-amber-700 shadow-sm">YOU: {gold}</div>
+                             {bots.map((b, i) => (
+                                 <div key={i} className="bg-slate-700 px-3 py-1 rounded-full text-xs flex items-center gap-1">
+                                    <span>{b.icon}</span>
+                                    <span>{b.name}: {b.gold}</span>
+                                 </div>
+                             ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const CryptoHack = ({ set, timeLimit, onExit }) => {
+            const [state, setState] = useState('playing');
+            const [shuffledQuestions, setShuffledQuestions] = useState([]);
+            const [qIndex, setQIndex] = useState(0);
+            const [crypto, setCrypto] = useState(0);
+            const [bots, setBots] = useState(BOTS.map(b => ({...b, gold: Math.floor(Math.random() * 50)})));
+            const [passwords, setPasswords] = useState([]);
+            const [hacking, setHacking] = useState(false);
+            const [hackTarget, setHackTarget] = useState(null); // Password string
+            const [stats, setStats] = useState({ correct: 0, total: 0 });
+            const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
+            const [showTargetSelector, setShowTargetSelector] = useState(false);
+
+            // Init shuffle
+            useEffect(() => {
+                setShuffledQuestions([...set.questions].sort(() => Math.random() - 0.5));
+                generatePasswords();
+            }, [set]);
+
+            // Timer
+            useEffect(() => {
+                if (state === 'finished') return;
+                const timer = setInterval(() => {
+                    setTimeLeft(prev => {
+                        if (prev <= 1) {
+                            setState('finished');
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        if (prev % 3 === 0) { // Faster passive gain in crypto
+                             setBots(curr => curr.map(b => ({...b, gold: b.gold + Math.floor(Math.random() * 10)})));
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [state]);
+
+            const generatePasswords = () => {
+                const chars = ['admin', 'pass', '123', 'user', 'root', 'safe', 'cool', 'hack'];
+                let pwds = [];
+                for(let i=0; i<3; i++) {
+                    pwds.push(chars[Math.floor(Math.random()*chars.length)] + Math.floor(Math.random()*99));
+                }
+                setPasswords(pwds);
+            };
+
+            const handleAnswer = (idx) => {
+                const isCorrect = idx === shuffledQuestions[qIndex].correct;
+                setStats(prev => ({ total: prev.total + 1, correct: isCorrect ? prev.correct + 1 : prev.correct }));
+
+                if(isCorrect) {
+                    setState('correct');
+                    setTimeout(() => {
+                        setState('hack'); 
+                        generatePasswords(); 
+                    }, 800);
+                } else {
+                    setState('incorrect');
+                    setTimeout(nextQuestion, 1500);
+                }
+            };
+
+            const choosePassword = (pwd) => {
+                setHackTarget(pwd);
+                setHacking(true);
+                
+                setTimeout(() => {
+                    // Success logic
+                    setHacking(false);
+                    setHackTarget(null);
+                    // Instead of just getting crypto, you trigger a steal
+                    const success = Math.random() > 0.2; // 80% success rate
+                    
+                    if(success) {
+                        setShowTargetSelector(true);
+                    } else {
+                        // Failed hack
+                        nextQuestion();
+                    }
+                }, 1500); 
+            };
+
+            const stealFromBot = (targetBot) => {
+                const amount = 10 + Math.floor(Math.random() * 20); // Base mine
+                const stolen = Math.min(targetBot.gold, 20 + Math.floor(Math.random() * 30));
+                
+                setCrypto(c => c + amount + stolen);
+                setBots(bots.map(b => b.id === targetBot.id ? {...b, gold: Math.max(0, b.gold - stolen)} : b));
+                
+                setShowTargetSelector(false);
+                nextQuestion();
+            };
+
+            const nextQuestion = () => {
+                setQIndex(prev => (prev + 1) % shuffledQuestions.length);
+                setShowTargetSelector(false);
+                setState('playing');
+            };
+
+            if (!shuffledQuestions.length) return <div>Loading...</div>;
+            if(state === 'finished') return <GameOver score={crypto} type="Crypto" onExit={onExit} bots={bots} stats={stats} />;
+
+            return (
+                <div className="bg-slate-900 min-h-screen flex flex-col font-mono text-sm">
+                    {showTargetSelector && <PlayerSelector bots={bots} onSelect={stealFromBot} title="Hack Successful! Steal From Who?" />}
+
+                     {/* Header */}
+                     <div className="bg-slate-800 p-2 flex justify-between items-center text-green-400 font-bold px-4 border-b border-slate-700 shadow-neon sticky top-0 z-30">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onExit} className="bg-slate-700 hover:bg-slate-600 text-green-400 border border-green-500 px-3 py-1 rounded text-xs font-bold">
+                                <i className="fas fa-arrow-left mr-1"></i> EXIT
+                            </button>
+                            <div className="text-xl">⚡ {crypto}</div>
+                        </div>
+                        <div className="text-xl text-green-500">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                    </div>
+
+                    <div className="flex-1 relative flex flex-col justify-center">
+                        {state === 'playing' && <QuestionScreen question={shuffledQuestions[qIndex]} onAnswer={handleAnswer} />}
+                        
+                        {/* Hack Overlay */}
+                        {(state === 'hack' || hacking) && (
+                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-95 z-20 text-green-500 p-4">
+                                 {hacking ? (
+                                     <div className="text-center">
+                                        <div className="text-5xl mb-4 animate-pulse">
+                                            <i className="fas fa-terminal"></i>
+                                        </div>
+                                        <h2 className="text-2xl mb-2">BRUTE_FORCING...</h2>
+                                        <p className="text-lg text-green-700">Target: {hackTarget}</p>
+                                        <div className="w-56 h-3 bg-gray-800 rounded mt-4 overflow-hidden">
+                                            <div className="h-full bg-green-500 animate-[width_2s_ease-in-out] w-full origin-left"></div>
+                                        </div>
+                                     </div>
+                                 ) : !showTargetSelector && (
+                                     <div className="w-full max-w-xl animate-fade-in">
+                                        <h2 className="text-2xl text-center mb-6 glich-text">SELECT PASSWORD TO HACK</h2>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {passwords.map((p, i) => (
+                                                <button key={i} onClick={() => choosePassword(p)} className="p-3 border border-green-500 hover:bg-green-500 hover:text-black transition-colors font-mono text-lg rounded">
+                                                    {p}
+                                                </button>
+                                            ))}
+                                        </div>
+                                     </div>
+                                 )}
+                             </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const GameOver = ({ score, type, onExit, bots, stats }) => {
+            const percentage = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+            // Determine Rank
+            const allScores = [...bots.map(b => b.gold), score].sort((a,b) => b - a);
+            const rank = allScores.indexOf(score) + 1;
+
+            return (
+                <div className="min-h-screen bg-slate-800 flex items-center justify-center p-4">
+                    <div className="bg-white p-6 rounded-3xl text-center max-w-2xl w-full shadow-2xl animate-fade-in flex flex-col md:flex-row gap-8 items-center border-8 border-slate-200">
+                        
+                        <div className="flex-1 w-full">
+                            <h1 className="text-4xl font-black text-slate-800 mb-2">TIME'S UP!</h1>
+                            <div className="text-6xl mb-4">{rank === 1 ? '🏆' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎗️'}</div>
+                            
+                            <div className="bg-blue-100 p-4 rounded-2xl mb-4">
+                                <div className="text-xs text-blue-600 font-bold uppercase">Total {type}</div>
+                                <div className="text-5xl font-black text-blue-800">{score}</div>
+                            </div>
+
+                            <div className="text-left bg-slate-50 p-3 rounded-xl text-sm h-32 overflow-y-auto border-2 border-slate-100">
+                                {[...bots, {name: 'YOU', gold: score, icon: '👤'}].sort((a,b) => b.gold - a.gold).map((b, i) => (
+                                    <div key={i} className={`flex justify-between border-b py-2 px-2 last:border-0 ${b.name === 'YOU' ? 'bg-amber-100 font-bold' : ''}`}>
+                                        <span>#{i+1} {b.icon || ''} {b.name}</span>
+                                        <span className="font-bold">{b.gold}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex-1 w-full border-t md:border-t-0 md:border-l border-slate-200 pt-6 md:pt-0 md:pl-6 flex flex-col items-center">
+                             <h3 className="text-xl font-black text-slate-700 mb-4">Accuracy</h3>
+                             
+                             <div className="relative w-32 h-32 mb-4">
+                                <svg className="w-full h-full" viewBox="0 0 36 36">
+                                    <path className="text-gray-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                                    <path className={`${percentage >= 70 ? 'text-green-500' : percentage >= 40 ? 'text-yellow-500' : 'text-red-500'} transition-all duration-1000 ease-out`} strokeDasharray={`${percentage}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center flex-col">
+                                    <span className="text-3xl font-black text-slate-700">{percentage}%</span>
+                                </div>
+                             </div>
+
+                             <div className="grid grid-cols-2 gap-4 w-full text-sm">
+                                 <div className="bg-green-50 p-2 rounded-lg">
+                                     <div className="font-bold text-green-700">Correct</div>
+                                     <div className="text-xl text-green-800">{stats.correct}</div>
+                                 </div>
+                                 <div className="bg-red-50 p-2 rounded-lg">
+                                     <div className="font-bold text-red-700">Incorrect</div>
+                                     <div className="text-xl text-red-800">{stats.total - stats.correct}</div>
+                                 </div>
+                             </div>
+
+                             <Button onClick={onExit} className="w-full mt-6" size="md">Home</Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
+
+        const Editor = ({ onSave, onCancel }) => {
+             // Reuse previous editor logic simplified for brevity but included for functionality
+            const [title, setTitle] = useState("");
+            const [desc, setDesc] = useState("");
+            const [questions, setQuestions] = useState([]);
+            const [qText, setQText] = useState("");
+            const [a1, setA1] = useState("");
+            const [a2, setA2] = useState("");
+            const [a3, setA3] = useState("");
+            const [a4, setA4] = useState("");
+
+            const addQuestion = () => {
+                if(!qText || !a1 || !a2) return alert("Question + 2 answers min");
+                const rawAnswers = [a1, a2, a3, a4].filter(a => a);
+                const correctText = a1;
+                let shuffled = [...rawAnswers].sort(() => Math.random() - 0.5);
+                const correctIndex = shuffled.indexOf(correctText);
+                setQuestions([...questions, { q: qText, a: shuffled, correct: correctIndex }]);
+                setQText(""); setA1(""); setA2(""); setA3(""); setA4("");
+            };
+
+            return (
+                <div className="p-6 max-w-4xl mx-auto w-full bg-white rounded-2xl border-4 border-slate-200 mt-10">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-3xl font-black text-slate-700">Create Set</h2>
+                        <Button color="danger" size="sm" onClick={onCancel}>Cancel</Button>
+                    </div>
+                    <div className="space-y-4 mb-8">
+                        <input className="w-full p-3 text-xl font-bold border-2 border-slate-300 rounded-lg" placeholder="Set Title" value={title} onChange={e => setTitle(e.target.value)} />
+                        <input className="w-full p-3 text-md border-2 border-slate-300 rounded-lg" placeholder="Description" value={desc} onChange={e => setDesc(e.target.value)} />
+                    </div>
+                    <div className="bg-slate-50 p-6 rounded-xl border-2 border-slate-200 mb-8">
+                         <input className="w-full p-3 mb-3 border-2 border-slate-300 rounded-lg" placeholder="Question" value={qText} onChange={e => setQText(e.target.value)} />
+                         <div className="grid grid-cols-2 gap-3">
+                            <input className="p-3 border-2 border-green-300 bg-green-50 rounded-lg" placeholder="Correct Answer" value={a1} onChange={e => setA1(e.target.value)} />
+                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer" value={a2} onChange={e => setA2(e.target.value)} />
+                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer" value={a3} onChange={e => setA3(e.target.value)} />
+                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer" value={a4} onChange={e => setA4(e.target.value)} />
+                        </div>
+                        <Button color="purple" className="mt-4" onClick={addQuestion}>Add Q</Button>
+                    </div>
+                    <Button color="success" className="w-full" onClick={() => onSave({ id: Date.now(), title, desc, questions, category: 'Custom' })}>Save Set</Button>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [screen, setScreen] = useState('dashboard'); 
+            const [customSets, setCustomSets] = useState([]);
+            const [activeSet, setActiveSet] = useState(null);
+            const [activeMode, setActiveMode] = useState(null); // 'gold', 'crypto'
+            const [timeLimit, setTimeLimit] = useState(5);
+
+            // Navbar
+            const Navbar = () => (
+                <div className="bg-purple-600 p-4 shadow-lg flex justify-between items-center border-b-4 border-purple-800 sticky top-0 z-50">
+                    <div className="flex items-center gap-2 text-white cursor-pointer" onClick={() => { setScreen('dashboard'); setActiveSet(null); }}>
+                        <div className="bg-white text-purple-600 p-2 rounded-lg font-black text-xl">B</div>
+                        <h1 className="text-2xl font-black tracking-wider">BLOCKBUSTER ULT</h1>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button size="sm" color="warning" onClick={() => setScreen('editor')}><i className="fas fa-pen"></i> Create</Button>
+                    </div>
+                </div>
+            );
+
+            const ModeSelect = ({ onSelect }) => (
+                 <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 animate-fade-in">
+                    <div className="absolute top-24 left-4">
+                        <Button size="sm" color="gray" onClick={() => setScreen('setup')}>Back</Button>
+                    </div>
+                    <h2 className="text-4xl font-black text-slate-700 mb-10">Choose Mode</h2>
+                    <div className="flex flex-wrap gap-6 justify-center">
+                        <div onClick={() => onSelect('gold')} className="w-64 bg-yellow-100 rounded-2xl border-b-8 border-yellow-600 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center overflow-hidden shadow-xl">
+                            <div className="h-32 w-full bg-yellow-400 flex items-center justify-center text-5xl">💰</div>
+                            <div className="p-4 text-center">
+                                <h3 className="text-xl font-black text-yellow-800 mb-2">Gold Quest</h3>
+                                <p className="text-xs text-yellow-700 font-bold">Collect chests. Swap gold. Survive.</p>
+                            </div>
+                        </div>
+                        <div onClick={() => onSelect('crypto')} className="w-64 bg-purple-100 rounded-2xl border-b-8 border-purple-600 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center overflow-hidden shadow-xl">
+                            <div className="h-32 w-full bg-purple-500 flex items-center justify-center text-5xl text-white">💻</div>
+                            <div className="p-4 text-center">
+                                <h3 className="text-xl font-black text-purple-800 mb-2">Crypto Hack</h3>
+                                <p className="text-xs text-purple-700 font-bold">Guess passwords. Steal Crypto.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen bg-gray-100 flex flex-col font-sans text-slate-800">
+                    {screen !== 'game' && <Navbar />}
+                    
+                    {screen === 'dashboard' && <Dashboard customSets={customSets} onSelectSet={(s) => { setActiveSet(s); setScreen('setup'); }} />}
+                    
+                    {screen === 'editor' && <Editor onSave={(s) => { setCustomSets([...customSets, s]); setScreen('dashboard'); }} onCancel={() => setScreen('dashboard')} />}
+                    
+                    {screen === 'setup' && <SetupGame set={activeSet} onBack={() => setScreen('dashboard')} onStart={(t) => { setTimeLimit(t); setScreen('mode-select'); }} />}
+
+                    {screen === 'mode-select' && <ModeSelect onSelect={(m) => { setActiveMode(m); setScreen('game'); }} />}
+
+                    {screen === 'game' && activeMode === 'gold' && <GoldQuest set={activeSet} timeLimit={timeLimit} onExit={() => setScreen('dashboard')} />}
+                    
+                    {screen === 'game' && activeMode === 'crypto' && <CryptoHack set={activeSet} timeLimit={timeLimit} onExit={() => setScreen('dashboard')} />}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        })(); 
+    </script>
+</body>
+</html>
