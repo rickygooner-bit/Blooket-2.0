@@ -15,7 +15,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Font Awesome (Icons from the Internet) -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- LOAD THE QUESTIONS FROM EXTERNAL FILE -->
@@ -43,18 +43,16 @@
                         'bounce-short': 'bounce 0.5s infinite',
                         'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'fade-in': 'fadeIn 0.5s ease-out forwards',
-                        'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+                        'pop-up': 'popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                     },
                     keyframes: {
                         fadeIn: {
                             '0%': { opacity: '0', transform: 'translateY(10px)' },
                             '100%': { opacity: '1', transform: 'translateY(0)' },
                         },
-                        shake: {
-                            '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
-                            '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
-                            '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
-                            '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
+                        popUp: {
+                            '0%': { opacity: '0', transform: 'scale(0.5) translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
                         }
                     }
                 }
@@ -83,17 +81,62 @@
             margin: 0 auto;
         }
         
-        /* Custom Chest Styling */
-        .chest-container {
-            perspective: 1000px;
+        /* --- NEW CHEST STYLES --- */
+        .chest-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .chest-wrapper:hover {
+            transform: scale(1.05);
+        }
+        .chest-body {
+            position: absolute;
+            bottom: 0;
+            left: 10%;
+            width: 80%;
+            height: 55%;
+            background: linear-gradient(to bottom, #d97706, #b45309);
+            border: 4px solid #78350f;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            z-index: 10;
         }
         .chest-lid {
-            transition: transform 0.5s;
+            position: absolute;
+            bottom: 55%; /* Sit exactly on top of body */
+            left: 8%; /* Slightly wider than body */
+            width: 84%;
+            height: 35%;
+            background: linear-gradient(to bottom, #fbbf24, #d97706);
+            border: 4px solid #78350f;
+            border-radius: 10px 10px 0 0;
             transform-origin: bottom;
+            transition: transform 0.4s ease-in-out;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .chest-open .chest-lid {
-            transform: rotateX(180deg) translateY(10px);
-            opacity: 0; /* Simple fade out for open effect */
+        .chest-lock {
+            width: 16px;
+            height: 24px;
+            background: #fbbf24;
+            border: 3px solid #78350f;
+            border-radius: 4px;
+            position: absolute;
+            bottom: -12px; /* Hang over the edge */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        /* Animation state for open chest */
+        .is-open .chest-lid {
+            transform: rotateX(110deg) translateY(-10px);
+        }
+        .is-open .chest-body {
+            filter: brightness(0.8);
         }
     </style>
 </head>
@@ -106,7 +149,6 @@
         const { useState, useEffect, useRef, useCallback } = React;
 
         // --- DATA LOADING & SHUFFLING LOGIC ---
-        
         const shuffleArray = (array) => {
             const newArray = [...array];
             for (let i = newArray.length - 1; i > 0; i--) {
@@ -127,11 +169,10 @@
 
         const PREMADE_SETS = window.BLOCKBUSTER_DATA || [];
 
-        // Updated Bots with Font Awesome Icons
         const BOTS = [
             { id: 1, name: "Dino", icon: "fa-dragon", color: "text-green-500", gold: 0 },
             { id: 2, name: "Uni", icon: "fa-horse-head", color: "text-pink-500", gold: 0 },
-            { id: 3, name: "Foxy", icon: "fa-cat", color: "text-orange-500", gold: 0 }, // Cat as stand-in for fox
+            { id: 3, name: "Foxy", icon: "fa-cat", color: "text-orange-500", gold: 0 }, 
             { id: 4, name: "Alien", icon: "fa-user-astronaut", color: "text-purple-500", gold: 0 },
             { id: 5, name: "Ghost", icon: "fa-ghost", color: "text-gray-400", gold: 0 },
             { id: 6, name: "Robot", icon: "fa-robot", color: "text-blue-500", gold: 0 },
@@ -139,7 +180,6 @@
         ];
 
         // --- VISUAL HELPERS ---
-
         const getCategoryIcon = (cat) => {
             switch(cat) {
                 case 'Math': return <i className="fas fa-calculator text-blue-500"></i>;
@@ -155,7 +195,6 @@
         };
 
         // --- SHARED COMPONENTS ---
-
         const Button = ({ children, onClick, color = "primary", size = "md", className = "", disabled = false }) => {
             const colors = {
                 primary: "bg-blue-500 hover:bg-blue-600 border-blue-700 text-white",
@@ -453,45 +492,41 @@
 
                         {state === 'chest' && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 bg-opacity-90 z-20 p-4">
-                                <h2 className="text-3xl text-white font-black mb-8"><i className="fas fa-gem mr-2 text-purple-400"></i> Choose a Chest!</h2>
-                                <div className="flex gap-4 md:gap-8 justify-center w-full max-w-3xl">
+                                <h2 className="text-3xl text-white font-black mb-10"><i className="fas fa-gem mr-2 text-purple-400"></i> Choose a Chest!</h2>
+                                <div className="flex gap-6 md:gap-8 justify-center w-full max-w-4xl flex-wrap">
                                     {[0, 1, 2].map(i => (
-                                        <div key={i} onClick={() => openChest(i)} className={`w-32 h-32 md:w-40 md:h-40 cursor-pointer transition-transform ${openedChest === null ? 'hover:scale-105' : ''} chest-container`}>
-                                            {openedChest === i ? (
-                                                 <div className="w-full h-full flex items-center justify-center bg-yellow-200 rounded-xl border-4 border-yellow-500 animate-pulse">
-                                                    {chestContent ? (
-                                                        <div className="text-center transform scale-90">
-                                                            <div className="text-4xl mb-1">
-                                                                {chestContent.type === 'gold' && <i className="fas fa-coins text-yellow-600"></i>}
-                                                                {chestContent.type === 'triple' && <i className="fas fa-cubes text-purple-600"></i>}
-                                                                {chestContent.type === 'double' && <i className="fas fa-cube text-blue-600"></i>}
-                                                                {chestContent.type === 'swap' && <i className="fas fa-exchange-alt text-orange-500"></i>}
-                                                                {chestContent.type === 'steal10' && <i className="fas fa-mask text-gray-700"></i>}
-                                                                {chestContent.type === 'steal25' && <i className="fas fa-bomb text-black"></i>}
-                                                                {chestContent.type.includes('lose') && <i className="fas fa-chart-line-down text-red-600"></i>}
-                                                            </div>
-                                                            <div className="font-bold text-yellow-900 text-xs md:text-sm uppercase">
-                                                                {chestContent.type === 'gold' && `+${chestContent.val}`}
-                                                                {chestContent.type === 'triple' && `Triple!`}
-                                                                {chestContent.type === 'double' && `Double!`}
-                                                                {chestContent.type === 'swap' && `Swap!`}
-                                                                {chestContent.type === 'steal10' && `Steal 10%`}
-                                                                {chestContent.type === 'steal25' && `Steal 25%`}
-                                                                {chestContent.type === 'lose10' && `-10%`}
-                                                                {chestContent.type === 'lose25' && `-25%`}
-                                                            </div>
-                                                        </div>
-                                                    ) : "..."}
-                                                 </div>
-                                            ) : (
-                                                // Custom SVG Chest
-                                                openedChest === null && (
-                                                    <div className="w-full h-full bg-yellow-600 rounded-lg border-4 border-yellow-800 shadow-xl flex items-center justify-center relative animate-shake hover:bg-yellow-500">
-                                                        <div className="absolute top-1/2 w-full h-2 bg-yellow-900 opacity-30"></div>
-                                                        <i className="fas fa-lock text-yellow-900 text-3xl z-10"></i>
+                                        <div key={i} onClick={() => openChest(i)} className={`w-32 h-32 md:w-40 md:h-40 chest-wrapper ${openedChest === i ? 'is-open' : ''}`}>
+                                            
+                                            {/* Reward Content Layer (Pops out) */}
+                                            {openedChest === i && chestContent && (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center z-30 animate-pop-up pointer-events-none">
+                                                    <div className="text-6xl md:text-7xl mb-2 drop-shadow-lg">
+                                                        {chestContent.type === 'gold' && <i className="fas fa-coins text-yellow-400"></i>}
+                                                        {chestContent.type === 'triple' && <i className="fas fa-cubes text-purple-400"></i>}
+                                                        {chestContent.type === 'double' && <i className="fas fa-cube text-blue-400"></i>}
+                                                        {chestContent.type === 'swap' && <i className="fas fa-exchange-alt text-orange-400"></i>}
+                                                        {chestContent.type === 'steal10' && <i className="fas fa-mask text-gray-300"></i>}
+                                                        {chestContent.type === 'steal25' && <i className="fas fa-bomb text-red-500"></i>}
+                                                        {chestContent.type.includes('lose') && <i className="fas fa-chart-line-down text-red-600"></i>}
                                                     </div>
-                                                )
+                                                    <div className="font-black text-white text-xl md:text-2xl uppercase drop-shadow-md bg-black bg-opacity-50 px-4 py-1 rounded-full whitespace-nowrap">
+                                                        {chestContent.type === 'gold' && `+${chestContent.val} Gold`}
+                                                        {chestContent.type === 'triple' && `Triple Gold!`}
+                                                        {chestContent.type === 'double' && `Double Gold!`}
+                                                        {chestContent.type === 'swap' && `Swap!`}
+                                                        {chestContent.type === 'steal10' && `Steal 10%`}
+                                                        {chestContent.type === 'steal25' && `Steal 25%`}
+                                                        {chestContent.type === 'lose10' && `-10%`}
+                                                        {chestContent.type === 'lose25' && `-25%`}
+                                                    </div>
+                                                </div>
                                             )}
+
+                                            {/* Chest Graphics */}
+                                            <div className="chest-lid">
+                                                <div className="chest-lock"></div>
+                                            </div>
+                                            <div className="chest-body"></div>
                                         </div>
                                     ))}
                                 </div>
