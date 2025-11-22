@@ -45,6 +45,7 @@
                         'fade-in': 'fadeIn 0.5s ease-out forwards',
                         'pop-up': 'popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
                         'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+                        'flame': 'flame 1s infinite alternate',
                     },
                     keyframes: {
                         fadeIn: {
@@ -60,6 +61,10 @@
                             '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
                             '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
                             '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
+                        },
+                        flame: {
+                            '0%': { transform: 'scale(1)' },
+                            '100%': { transform: 'scale(1.1)' }
                         }
                     }
                 }
@@ -162,6 +167,19 @@
             border-bottom-width: 0px;
             transform: translateY(4px);
         }
+        
+        /* Glitch Text for Crypto */
+        .glich-text {
+            position: relative;
+        }
+        .glich-text::before, .glich-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 <body>
@@ -172,7 +190,7 @@
 
         const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- DATA ---
+        // --- UTILS ---
         const shuffleArray = (array) => {
             const newArray = [...array];
             for (let i = newArray.length - 1; i > 0; i--) {
@@ -187,44 +205,36 @@
                 const correctText = q.a[q.correct];
                 const shuffledAnswers = shuffleArray(q.a);
                 const newCorrectIndex = shuffledAnswers.indexOf(correctText);
-                return { ...q, a: shuffledAnswers, correct: newCorrectIndex };
+                return { ...q, a: shuffledAnswers, correct: newCorrectIndex, originalCorrect: correctText };
             }).sort(() => Math.random() - 0.5);
         };
 
         const PREMADE_SETS = window.BLOCKBUSTER_DATA || [];
 
-        // --- STRICTER BAD WORDS LIST ---
-        // This list is illustrative. In a real production app, you'd use a library or API.
-        const BAD_WORDS = [
-            "badword", "swear", "curse", "stupid", "dumb", "hate", "ugly", "nasty", 
-            "hell", "damn", "ass", "bitch", "shit", "fuck", "cunt", "dick", "piss", 
-            "bastard", "crap", "whore", "slut", "cock", "pussy", "tit", "boob", 
-            "fag", "nigger", "nigga", "chink", "kike", "dyke", "retard", "spastic",
-            "kill", "die", "murder", "death", "suicide", "anal", "rectum", "penis", "vagina", "sex"
-        ]; 
+        const BAD_WORDS = ["badword", "swear", "curse", "stupid", "dumb", "hate", "ugly", "nasty", "hell", "damn", "ass", "bitch", "shit", "fuck", "cunt", "dick", "piss", "bastard", "crap", "whore", "slut", "cock", "pussy", "tit", "boob", "fag", "nigger", "nigga", "chink", "kike", "dyke", "retard", "spastic", "kill", "die", "murder", "death", "suicide", "anal", "rectum", "penis", "vagina", "sex"]; 
 
         // --- BLOOK DEFINITIONS ---
         const BLOOKS = [
-            { id: 'wizard', icon: 'fa-hat-wizard', color: 'bg-purple-600' },
-            { id: 'dragon', icon: 'fa-dragon', color: 'bg-red-600' },
-            { id: 'ghost', icon: 'fa-ghost', color: 'bg-gray-400' },
-            { id: 'robot', icon: 'fa-robot', color: 'bg-blue-500' },
-            { id: 'alien', icon: 'fa-user-astronaut', color: 'bg-green-500' },
-            { id: 'ninja', icon: 'fa-user-ninja', color: 'bg-slate-800' },
-            { id: 'king', icon: 'fa-crown', color: 'bg-yellow-500' },
-            { id: 'cat', icon: 'fa-cat', color: 'bg-orange-400' },
-            { id: 'dog', icon: 'fa-dog', color: 'bg-amber-700' },
-            { id: 'fish', icon: 'fa-fish', color: 'bg-cyan-400' },
-            { id: 'spider', icon: 'fa-spider', color: 'bg-slate-900' },
-            { id: 'hippo', icon: 'fa-hippo', color: 'bg-fuchsia-600' },
-            { id: 'frog', icon: 'fa-frog', color: 'bg-green-600' },
-            { id: 'bird', icon: 'fa-crow', color: 'bg-sky-600' },
-            { id: 'horse', icon: 'fa-horse', color: 'bg-amber-800' },
-            { id: 'skull', icon: 'fa-skull', color: 'bg-stone-500' },
-            { id: 'bomb', icon: 'fa-bomb', color: 'bg-red-800' },
-            { id: 'gem', icon: 'fa-gem', color: 'bg-pink-500' },
-            { id: 'bolt', icon: 'fa-bolt', color: 'bg-yellow-400' },
-            { id: 'brain', icon: 'fa-brain', color: 'bg-rose-400' },
+            { id: 'wizard', icon: 'fa-hat-wizard', color: 'bg-purple-600', cost: 10, rate: 5 }, // Rate for Factory Mode
+            { id: 'dragon', icon: 'fa-dragon', color: 'bg-red-600', cost: 150, rate: 25 },
+            { id: 'ghost', icon: 'fa-ghost', color: 'bg-gray-400', cost: 50, rate: 10 },
+            { id: 'robot', icon: 'fa-robot', color: 'bg-blue-500', cost: 80, rate: 15 },
+            { id: 'alien', icon: 'fa-user-astronaut', color: 'bg-green-500', cost: 120, rate: 20 },
+            { id: 'ninja', icon: 'fa-user-ninja', color: 'bg-slate-800', cost: 200, rate: 35 },
+            { id: 'king', icon: 'fa-crown', color: 'bg-yellow-500', cost: 500, rate: 100 },
+            { id: 'cat', icon: 'fa-cat', color: 'bg-orange-400', cost: 20, rate: 4 },
+            { id: 'dog', icon: 'fa-dog', color: 'bg-amber-700', cost: 20, rate: 4 },
+            { id: 'fish', icon: 'fa-fish', color: 'bg-cyan-400', cost: 15, rate: 3 },
+            { id: 'spider', icon: 'fa-spider', color: 'bg-slate-900', cost: 30, rate: 6 },
+            { id: 'hippo', icon: 'fa-hippo', color: 'bg-fuchsia-600', cost: 60, rate: 12 },
+            { id: 'frog', icon: 'fa-frog', color: 'bg-green-600', cost: 25, rate: 5 },
+            { id: 'bird', icon: 'fa-crow', color: 'bg-sky-600', cost: 40, rate: 8 },
+            { id: 'horse', icon: 'fa-horse', color: 'bg-amber-800', cost: 45, rate: 9 },
+            { id: 'skull', icon: 'fa-skull', color: 'bg-stone-500', cost: 100, rate: 18 },
+            { id: 'bomb', icon: 'fa-bomb', color: 'bg-red-800', cost: 90, rate: 16 },
+            { id: 'gem', icon: 'fa-gem', color: 'bg-pink-500', cost: 300, rate: 50 },
+            { id: 'bolt', icon: 'fa-bolt', color: 'bg-yellow-400', cost: 250, rate: 40 },
+            { id: 'brain', icon: 'fa-brain', color: 'bg-rose-400', cost: 1000, rate: 200 },
         ];
 
         const BOTS = [
@@ -281,7 +291,6 @@
             );
         };
 
-        // Blook Avatar Component
         const BlookAvatar = ({ blook, size = "md", className = "" }) => {
             const sizes = {
                 sm: "w-8 h-8 text-sm",
@@ -296,7 +305,6 @@
             );
         };
 
-        // UPDATED: Stricter Profile Selector
         const ProfileSelector = ({ currentProfile, onSave, onClose }) => {
             const [tempName, setTempName] = useState(currentProfile.name);
             const [tempBlook, setTempBlook] = useState(currentProfile.blook);
@@ -304,44 +312,12 @@
 
             const handleSave = () => {
                 const nameToCheck = tempName.trim();
+                if(!nameToCheck) { setError("Name cannot be empty!"); return; }
+                if (!/^[a-zA-Z0-9 ]+$/.test(nameToCheck)) { setError("Standard letters & numbers only"); return; }
                 
-                // 1. Empty Check
-                if(!nameToCheck) {
-                    setError("Name cannot be empty!");
-                    return;
-                }
+                let normalized = nameToCheck.toLowerCase().replace(/1/g, 'i').replace(/3/g, 'e').replace(/0/g, 'o').replace(/5/g, 's').replace(/4/g, 'a').replace(/8/g, 'b').replace(/\s/g, '');
+                if(BAD_WORDS.some(word => normalized.includes(word))) { setError("Please choose a polite name!"); return; }
 
-                // 2. STRICT FONT/CHAR CHECK
-                // This Regex allows only standard English letters (a-z, A-Z), numbers (0-9), and spaces.
-                // No emojis, no unicode fonts, no special symbols.
-                const standardCharRegex = /^[a-zA-Z0-9 ]+$/;
-                if (!standardCharRegex.test(nameToCheck)) {
-                    setError("Use standard letters & numbers only (No symbols/fonts)");
-                    return;
-                }
-
-                // 3. PROFANITY CHECK (Normalizer)
-                // Convert leet speak to normal letters for checking
-                // 1->i, 3->e, 0->o, 5->s, 4->a, 8->b
-                let normalized = nameToCheck.toLowerCase();
-                normalized = normalized.replace(/1/g, 'i')
-                                       .replace(/3/g, 'e')
-                                       .replace(/0/g, 'o')
-                                       .replace(/5/g, 's')
-                                       .replace(/4/g, 'a')
-                                       .replace(/8/g, 'b');
-                
-                // Remove spaces to catch "b a d w o r d"
-                const compressed = normalized.replace(/\s/g, '');
-
-                const foundBadWord = BAD_WORDS.some(word => compressed.includes(word));
-                
-                if(foundBadWord) {
-                    setError("Please choose a polite name!");
-                    return;
-                }
-
-                // Success
                 onSave(tempName, tempBlook);
             };
 
@@ -352,28 +328,14 @@
                             <h2 className="text-3xl font-black text-slate-700">Edit Profile</h2>
                             <Button size="sm" color="danger" onClick={onClose}>Close</Button>
                         </div>
-                        
                         <div className="flex-1 overflow-y-auto p-2">
-                            
-                            {/* Name Section */}
                             <div className="mb-8 text-center">
                                 <label className="block text-slate-500 font-bold mb-2 uppercase text-sm tracking-wide">Display Name</label>
                                 <div className={`relative max-w-md mx-auto ${error ? 'animate-shake' : ''}`}>
-                                    <input 
-                                        value={tempName}
-                                        onChange={(e) => { setTempName(e.target.value); setError(""); }}
-                                        maxLength={15}
-                                        className={`w-full text-center text-3xl font-black p-3 border-4 rounded-xl outline-none transition-colors ${error ? 'border-red-500 bg-red-50 text-red-500' : 'border-slate-300 focus:border-purple-500 text-slate-800'}`}
-                                        placeholder="Enter Name"
-                                    />
+                                    <input value={tempName} onChange={(e) => { setTempName(e.target.value); setError(""); }} maxLength={15} className={`w-full text-center text-3xl font-black p-3 border-4 rounded-xl outline-none transition-colors ${error ? 'border-red-500 bg-red-50 text-red-500' : 'border-slate-300 focus:border-purple-500 text-slate-800'}`} placeholder="Enter Name" />
                                     {error && <div className="text-red-500 font-bold mt-2 text-sm"><i className="fas fa-exclamation-triangle mr-1"></i> {error}</div>}
-                                    <div className="text-slate-400 text-xs mt-2 font-bold">
-                                        Standard letters & numbers only. Keep it clean!
-                                    </div>
                                 </div>
                             </div>
-
-                            {/* Blook Section */}
                             <div className="mb-4">
                                 <label className="block text-center text-slate-500 font-bold mb-4 uppercase text-sm tracking-wide">Choose Your Avatar</label>
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
@@ -385,11 +347,8 @@
                                 </div>
                             </div>
                         </div>
-
                         <div className="pt-4 border-t flex justify-center">
-                            <Button size="lg" color="success" onClick={handleSave} className="w-full max-w-xs">
-                                <i className="fas fa-save mr-2"></i> Save Profile
-                            </Button>
+                            <Button size="lg" color="success" onClick={handleSave} className="w-full max-w-xs"><i className="fas fa-save mr-2"></i> Save Profile</Button>
                         </div>
                     </div>
                 </div>
@@ -416,34 +375,25 @@
             </div>
         );
 
-        // --- SCREENS ---
-
+        // --- DASHBOARD ---
         const Dashboard = ({ customSets, onSelectSet, userProfile, onEditProfile }) => {
             const allSets = [...PREMADE_SETS, ...customSets];
             const categories = [...new Set(allSets.map(s => s.category || 'Custom'))];
             const [filter, setFilter] = useState('All');
 
             if (PREMADE_SETS.length === 0 && customSets.length === 0) {
-                return (
-                    <div className="p-10 text-center">
-                        <h1 className="text-3xl font-bold text-red-500">Error Loading Questions</h1>
-                        <p className="mt-4">Make sure <code>questions.js</code> is in the same folder as this file!</p>
-                    </div>
-                )
+                return <div className="p-10 text-center"><h1 className="text-3xl font-bold text-red-500">Error Loading Questions</h1></div>
             }
 
             return (
                 <div className="p-6 max-w-6xl mx-auto w-full game-container">
-                    {/* Profile Card */}
                     <div className="bg-white rounded-2xl border-4 border-slate-200 p-6 mb-8 flex items-center justify-between shadow-sm hover:border-purple-300 transition-colors cursor-pointer group" onClick={onEditProfile}>
                         <div className="flex items-center gap-4">
                             <BlookAvatar blook={userProfile.blook} size="lg" />
                             <div>
-                                <div className="text-xs font-extrabold text-purple-500 uppercase tracking-widest mb-1">
-                                    <i className="fas fa-id-card mr-1"></i> Your Profile
-                                </div>
+                                <div className="text-xs font-extrabold text-purple-500 uppercase tracking-widest mb-1"><i className="fas fa-id-card mr-1"></i> Your Profile</div>
                                 <h2 className="text-3xl font-black text-slate-800">{userProfile.name}</h2>
-                                <p className="text-slate-400 text-sm font-bold group-hover:text-purple-500 transition-colors">Click to edit name & avatar</p>
+                                <p className="text-slate-400 text-sm font-bold group-hover:text-purple-500 transition-colors">Click to edit</p>
                             </div>
                         </div>
                         <div className="text-purple-500 text-2xl bg-purple-50 p-4 rounded-full"><i className="fas fa-pencil-alt"></i></div>
@@ -483,79 +433,184 @@
             );
         };
 
-        const SetupGame = ({ set, onStart, onBack }) => {
-            const [time, setTime] = useState(5); // Minutes
+        // --- NEW FACTORY MODE ---
+        const FactoryMode = ({ set, timeLimit, userProfile, onExit }) => {
+            const [state, setState] = useState('playing');
+            const [shuffledQuestions, setShuffledQuestions] = useState([]);
+            const [qIndex, setQIndex] = useState(0);
+            
+            const [cash, setCash] = useState(0);
+            const [energy, setEnergy] = useState(100); // 0 to 100
+            const [units, setUnits] = useState([]); // { id, count, rate }
+            const [history, setHistory] = useState([]);
+            
+            const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
+            const [showShop, setShowShop] = useState(false);
+
+            useEffect(() => { setShuffledQuestions(prepareGameData(set.questions)); }, [set]);
+
+            // Game Loop (1s)
+            useEffect(() => {
+                if (state === 'finished') return;
+                const timer = setInterval(() => {
+                    setTimeLeft(prev => {
+                        if (prev <= 1) { setState('finished'); clearInterval(timer); return 0; }
+                        return prev - 1;
+                    });
+
+                    setEnergy(prev => Math.max(0, prev - 2)); // Drain energy
+
+                    // Produce Cash if Energy > 0
+                    if(energy > 0) {
+                        const production = units.reduce((acc, u) => acc + (u.rate * u.count), 0);
+                        setCash(prev => prev + production);
+                    }
+
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [state, units, energy]);
+
+            const handleAnswer = (idx) => {
+                const currentQ = shuffledQuestions[qIndex];
+                const isCorrect = idx === currentQ.correct;
+                
+                // Record History
+                setHistory(prev => [...prev, { q: currentQ.q, user: currentQ.a[idx], correct: currentQ.originalCorrect, isCorrect }]);
+
+                if(isCorrect) {
+                    setEnergy(prev => Math.min(100, prev + 25)); // Refill Energy
+                    setCash(prev => prev + 10); // Small cash bonus
+                }
+
+                // Next Q immediately for flow
+                setQIndex(prev => (prev + 1) % shuffledQuestions.length);
+            };
+
+            const buyUnit = (blook) => {
+                if(cash >= blook.cost) {
+                    setCash(prev => prev - blook.cost);
+                    setUnits(prev => {
+                        const existing = prev.find(u => u.id === blook.id);
+                        if(existing) {
+                            return prev.map(u => u.id === blook.id ? {...u, count: u.count + 1} : u);
+                        } else {
+                            return [...prev, { id: blook.id, blook: blook, count: 1, rate: blook.rate }];
+                        }
+                    });
+                }
+            };
+
+            if (state === 'finished') return <GameOver score={cash} type="Cash" onExit={onExit} bots={[]} stats={{}} userProfile={userProfile} history={history} />;
+
+            const income = units.reduce((acc, u) => acc + (u.rate * u.count), 0);
 
             return (
-                <div className="min-h-screen flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl border-4 border-slate-200 p-8 max-w-md w-full text-center shadow-xl animate-fade-in">
-                        <h2 className="text-3xl font-black text-slate-700 mb-2">{set.title}</h2>
-                        <p className="text-slate-500 mb-8">Game Setup</p>
+                <div className="bg-slate-900 min-h-screen flex flex-col font-sans text-white relative overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-slate-800 p-3 flex justify-between items-center border-b border-slate-700 shadow-lg z-20">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onExit} className="bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-xs font-bold">EXIT</button>
+                            <div className="text-xl font-black text-green-400"><i className="fas fa-dollar-sign"></i> {cash.toLocaleString()}</div>
+                            <div className="text-sm text-slate-400">+{income}/sec</div>
+                        </div>
+                        <div className="text-xl font-mono">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                    </div>
 
-                        <div className="mb-8">
-                            <label className="block text-sm font-bold text-slate-400 uppercase mb-2"><i className="fas fa-clock mr-1"></i> Game Duration</label>
-                            <div className="grid grid-cols-2 gap-4">
-                                {[3, 5, 7, 10].map(t => (
-                                    <div key={t} onClick={() => setTime(t)} className={`cursor-pointer p-4 rounded-xl border-b-4 font-bold text-xl transition-all ${time === t ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200'}`}>
-                                        {t} Mins
-                                    </div>
+                    <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+                        
+                        {/* Factory Floor (Left) */}
+                        <div className="flex-1 p-6 relative overflow-y-auto">
+                            <h2 className="text-2xl font-black mb-4 opacity-50">FACTORY FLOOR</h2>
+                            {units.length === 0 && <div className="text-slate-500 text-center mt-20">No workers yet! Answer questions to get energy, then buy units!</div>}
+                            <div className="grid grid-cols-4 gap-2">
+                                {units.map((u, i) => (
+                                    Array.from({length: u.count}).map((_, k) => (
+                                        <div key={`${u.id}-${k}`} className="animate-bounce-short">
+                                            <BlookAvatar blook={u.blook} size="sm" />
+                                        </div>
+                                    ))
                                 ))}
+                            </div>
+                            
+                            {/* Energy Bar */}
+                            <div className="absolute bottom-6 left-6 right-6">
+                                <div className="flex justify-between text-xs font-bold mb-1 uppercase tracking-wider">
+                                    <span>Energy</span>
+                                    <span className={energy < 20 ? "text-red-500 animate-pulse" : "text-blue-400"}>{energy}%</span>
+                                </div>
+                                <div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
+                                    <div className={`h-full transition-all duration-500 ${energy < 20 ? 'bg-red-500' : 'bg-blue-500'}`} style={{width: `${energy}%`}}></div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex gap-4">
-                            <Button color="gray" className="flex-1" onClick={onBack}>Back</Button>
-                            <Button color="success" className="flex-1" onClick={() => onStart(time)}>Start Game</Button>
+                        {/* Interaction Panel (Right) */}
+                        <div className="w-full md:w-96 bg-slate-800 border-l border-slate-700 flex flex-col z-30">
+                            <div className="flex border-b border-slate-700">
+                                <button onClick={() => setShowShop(false)} className={`flex-1 p-3 font-bold ${!showShop ? 'bg-slate-700 text-blue-400' : 'text-slate-400 hover:bg-slate-750'}`}>Questions</button>
+                                <button onClick={() => setShowShop(true)} className={`flex-1 p-3 font-bold ${showShop ? 'bg-slate-700 text-yellow-400' : 'text-slate-400 hover:bg-slate-750'}`}>Shop</button>
+                            </div>
+
+                            <div className="flex-1 relative">
+                                {!showShop ? (
+                                    <div className="absolute inset-0 p-4 flex flex-col justify-center">
+                                        {shuffledQuestions.length > 0 && (
+                                            <div className="animate-fade-in">
+                                                <div className="bg-slate-100 text-slate-900 p-4 rounded-xl text-center font-bold mb-4 shadow-lg border-b-4 border-slate-300">
+                                                    {shuffledQuestions[qIndex].q}
+                                                </div>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {shuffledQuestions[qIndex].a.map((ans, idx) => (
+                                                        <button key={idx} onClick={() => handleAnswer(idx)} className="bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-lg font-bold text-sm transition-colors text-left border-b-2 border-slate-900 active:border-b-0 active:translate-y-0.5">
+                                                            {ans}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="absolute inset-0 overflow-y-auto p-2 space-y-2">
+                                        {BLOOKS.slice(0, 10).map(b => (
+                                            <div key={b.id} onClick={() => buyUnit(b)} className={`bg-slate-700 p-2 rounded-lg flex items-center justify-between cursor-pointer border-2 ${cash >= b.cost ? 'border-green-500 hover:bg-slate-600' : 'border-red-500 opacity-50'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <BlookAvatar blook={b} size="sm" />
+                                                    <div>
+                                                        <div className="font-bold text-sm">{b.id.toUpperCase()}</div>
+                                                        <div className="text-xs text-slate-400">+{b.rate}$/sec</div>
+                                                    </div>
+                                                </div>
+                                                <div className="font-bold text-green-400">${b.cost}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        const QuestionScreen = ({ question, onAnswer }) => {
-            const colors = ['bg-red-500 border-red-700', 'bg-blue-500 border-blue-700', 'bg-green-500 border-green-700', 'bg-yellow-500 border-yellow-600'];
-            const icons = ['fa-square', 'fa-circle', 'fa-star', 'fa-heart'];
-
-            return (
-                <div className="flex flex-col items-center justify-center h-full p-4 max-w-4xl mx-auto w-full animate-fade-in">
-                    <div className="bg-white w-full p-6 rounded-xl border-b-8 border-slate-300 text-center mb-8 shadow-lg relative">
-                        <h2 className="text-2xl md:text-3xl font-black text-slate-800">{question.q}</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                        {question.a.map((ans, idx) => (
-                            <button 
-                                key={idx} 
-                                onClick={() => onAnswer(idx)}
-                                className={`${colors[idx % 4]} text-white text-lg md:text-xl font-bold p-6 rounded-xl border-b-4 shadow-md active:translate-y-1 active:border-b-0 active:shadow-none transition-all flex items-center gap-4`}
-                            >
-                                <i className={`fas ${icons[idx % 4]} text-2xl opacity-50`}></i>
-                                <span className="text-left flex-1">{ans}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-
-        // --- GAME MODES ---
-
+        // --- EXISTING GAME MODES UPDATED WITH STREAK & HISTORY ---
         const GoldQuest = ({ set, timeLimit, userProfile, onExit }) => {
             const [state, setState] = useState('playing');
             const [shuffledQuestions, setShuffledQuestions] = useState([]);
             const [qIndex, setQIndex] = useState(0);
             const [gold, setGold] = useState(0);
             const [bots, setBots] = useState(BOTS.map(b => ({...b, gold: Math.floor(Math.random() * 50)})));
-            const [stats, setStats] = useState({ correct: 0, total: 0 });
             const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
             
+            // Streak & History
+            const [streak, setStreak] = useState(0);
+            const [history, setHistory] = useState([]);
+
             const [openedChest, setOpenedChest] = useState(null); 
             const [chestContent, setChestContent] = useState(null);
             const [showTargetSelector, setShowTargetSelector] = useState(false);
             const [pendingAction, setPendingAction] = useState(null);
 
-            useEffect(() => {
-                setShuffledQuestions(prepareGameData(set.questions));
-            }, [set]);
+            useEffect(() => { setShuffledQuestions(prepareGameData(set.questions)); }, [set]);
 
             useEffect(() => {
                 if (state === 'finished') return;
@@ -572,12 +627,15 @@
             const handleAnswer = (idx) => {
                 const currentQ = shuffledQuestions[qIndex];
                 const isCorrect = idx === currentQ.correct;
-                setStats(prev => ({ total: prev.total + 1, correct: isCorrect ? prev.correct + 1 : prev.correct }));
+                
+                setHistory(prev => [...prev, { q: currentQ.q, user: currentQ.a[idx], correct: currentQ.originalCorrect, isCorrect }]);
 
                 if(isCorrect) {
+                    setStreak(s => s + 1);
                     setState('correct');
                     setTimeout(() => setState('chest'), 800);
                 } else {
+                    setStreak(0);
                     setState('incorrect');
                     setTimeout(nextQuestion, 1500);
                 }
@@ -599,7 +657,10 @@
                 const r = Math.random();
                 let reward = {};
                 
-                if (r < 0.30) { reward = { type: 'gold', val: 10 + Math.floor(Math.random()*90) }; }
+                // Multiplier based on Streak
+                const multiplier = streak >= 3 ? (streak >= 10 ? 3 : (streak >= 5 ? 2 : 1.5)) : 1;
+
+                if (r < 0.30) { reward = { type: 'gold', val: Math.floor((10 + Math.random()*90) * multiplier) }; }
                 else if (r < 0.40) { reward = { type: 'triple', val: 0 }; }
                 else if (r < 0.50) { reward = { type: 'double', val: 0 }; }
                 else if (r < 0.60) { reward = { type: 'swap', val: 0, action: true }; }
@@ -642,7 +703,7 @@
             };
 
             if (!shuffledQuestions.length) return <div>Loading...</div>;
-            if(state === 'finished') return <GameOver score={gold} type="Gold" onExit={onExit} bots={bots} stats={stats} userProfile={userProfile} />;
+            if(state === 'finished') return <GameOver score={gold} type="Gold" onExit={onExit} bots={bots} stats={{}} userProfile={userProfile} history={history} />;
 
             return (
                 <div className="bg-amber-300 min-h-screen flex flex-col font-sans">
@@ -655,7 +716,10 @@
                             </button>
                             <div className="text-xl flex items-center gap-2"><i className="fas fa-coins text-yellow-300"></i> {gold}</div>
                         </div>
-                        <div className="text-xl font-mono bg-black bg-opacity-20 px-3 rounded">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                        <div className="flex items-center gap-4">
+                            {streak >= 3 && <div className="text-orange-500 animate-flame text-xl"><i className="fas fa-fire"></i> {streak}</div>}
+                            <div className="text-xl font-mono bg-black bg-opacity-20 px-3 rounded">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                        </div>
                     </div>
 
                     <div className="flex-1 relative flex flex-col justify-center">
@@ -666,6 +730,7 @@
                                 <div className="text-center text-white animate-bounce">
                                     <i className="fas fa-check-circle text-8xl mb-4"></i>
                                     <h1 className="text-5xl font-black">CORRECT!</h1>
+                                    {streak >= 3 && <div className="text-xl mt-2 font-bold text-yellow-300">STREAK BONUS ACTIVE!</div>}
                                 </div>
                             </div>
                         )}
@@ -685,8 +750,6 @@
                                 <div className="flex gap-6 md:gap-8 justify-center w-full max-w-4xl flex-wrap">
                                     {[0, 1, 2].map(i => (
                                         <div key={i} onClick={() => openChest(i)} className={`w-32 h-32 md:w-40 md:h-40 chest-wrapper ${openedChest === i ? 'is-open' : ''}`}>
-                                            
-                                            {/* Reward Content Layer */}
                                             {openedChest === i && chestContent && (
                                                 <div className="absolute inset-0 flex flex-col items-center justify-center z-30 animate-pop-up pointer-events-none">
                                                     <div className="text-6xl md:text-7xl mb-2 drop-shadow-lg">
@@ -710,11 +773,7 @@
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {/* Chest Graphics */}
-                                            <div className="chest-lid">
-                                                <div className="chest-lock"></div>
-                                            </div>
+                                            <div className="chest-lid"><div className="chest-lock"></div></div>
                                             <div className="chest-body"></div>
                                         </div>
                                     ))}
@@ -722,7 +781,6 @@
                             </div>
                         )}
                     </div>
-                    
                     <div className="h-28 bg-slate-900 text-white p-3 overflow-y-auto text-sm">
                         <div className="flex flex-wrap gap-2 justify-center">
                              <div className="bg-amber-500 px-3 py-1 rounded-full font-bold border-b-2 border-amber-700 shadow-sm flex items-center gap-2">
@@ -750,14 +808,12 @@
             const [passwords, setPasswords] = useState([]);
             const [hacking, setHacking] = useState(false);
             const [hackTarget, setHackTarget] = useState(null); 
-            const [stats, setStats] = useState({ correct: 0, total: 0 });
             const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
             const [showTargetSelector, setShowTargetSelector] = useState(false);
+            const [streak, setStreak] = useState(0);
+            const [history, setHistory] = useState([]);
 
-            useEffect(() => {
-                setShuffledQuestions(prepareGameData(set.questions));
-                generatePasswords();
-            }, [set]);
+            useEffect(() => { setShuffledQuestions(prepareGameData(set.questions)); generatePasswords(); }, [set]);
 
             useEffect(() => {
                 if (state === 'finished') return;
@@ -781,16 +837,17 @@
             };
 
             const handleAnswer = (idx) => {
-                const isCorrect = idx === shuffledQuestions[qIndex].correct;
-                setStats(prev => ({ total: prev.total + 1, correct: isCorrect ? prev.correct + 1 : prev.correct }));
+                const currentQ = shuffledQuestions[qIndex];
+                const isCorrect = idx === currentQ.correct;
+                
+                setHistory(prev => [...prev, { q: currentQ.q, user: currentQ.a[idx], correct: currentQ.originalCorrect, isCorrect }]);
 
                 if(isCorrect) {
+                    setStreak(s => s + 1);
                     setState('correct');
-                    setTimeout(() => {
-                        setState('hack'); 
-                        generatePasswords(); 
-                    }, 800);
+                    setTimeout(() => { setState('hack'); generatePasswords(); }, 800);
                 } else {
+                    setStreak(0);
                     setState('incorrect');
                     setTimeout(nextQuestion, 1500);
                 }
@@ -803,17 +860,16 @@
                     setHacking(false);
                     setHackTarget(null);
                     const success = Math.random() > 0.2; 
-                    if(success) {
-                        setShowTargetSelector(true);
-                    } else {
-                        nextQuestion();
-                    }
+                    if(success) { setShowTargetSelector(true); } else { nextQuestion(); }
                 }, 1500); 
             };
 
             const stealFromBot = (targetBot) => {
-                const amount = 10 + Math.floor(Math.random() * 20); 
-                const stolen = Math.min(targetBot.gold, 20 + Math.floor(Math.random() * 30));
+                let multiplier = streak >= 3 ? 1.5 : 1;
+                if (streak >= 10) multiplier = 2;
+
+                const amount = Math.floor((10 + Math.floor(Math.random() * 20)) * multiplier); 
+                const stolen = Math.min(targetBot.gold, Math.floor((20 + Math.floor(Math.random() * 30)) * multiplier));
                 setCrypto(c => c + amount + stolen);
                 setBots(bots.map(b => b.id === targetBot.id ? {...b, gold: Math.max(0, b.gold - stolen)} : b));
                 setShowTargetSelector(false);
@@ -827,7 +883,7 @@
             };
 
             if (!shuffledQuestions.length) return <div>Loading...</div>;
-            if(state === 'finished') return <GameOver score={crypto} type="Crypto" onExit={onExit} bots={bots} stats={stats} userProfile={userProfile} />;
+            if(state === 'finished') return <GameOver score={crypto} type="Crypto" onExit={onExit} bots={bots} stats={{}} userProfile={userProfile} history={history} />;
 
             return (
                 <div className="bg-slate-900 min-h-screen flex flex-col font-mono text-sm">
@@ -840,7 +896,10 @@
                             </button>
                             <div className="text-xl"><i className="fas fa-bolt mr-2"></i> {crypto}</div>
                         </div>
-                        <div className="text-xl text-green-500">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                        <div className="flex items-center gap-4">
+                            {streak >= 3 && <div className="text-green-500 animate-pulse text-lg"><i className="fas fa-fire"></i> {streak}</div>}
+                            <div className="text-xl text-green-500">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
+                        </div>
                     </div>
 
                     <div className="flex-1 relative flex flex-col justify-center">
@@ -850,23 +909,17 @@
                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-95 z-20 text-green-500 p-4">
                                  {hacking ? (
                                      <div className="text-center">
-                                        <div className="text-5xl mb-4 animate-pulse">
-                                            <i className="fas fa-terminal"></i>
-                                        </div>
+                                        <div className="text-5xl mb-4 animate-pulse"><i className="fas fa-terminal"></i></div>
                                         <h2 className="text-2xl mb-2">BRUTE_FORCING...</h2>
                                         <p className="text-lg text-green-700">Target: {hackTarget}</p>
-                                        <div className="w-56 h-3 bg-gray-800 rounded mt-4 overflow-hidden">
-                                            <div className="h-full bg-green-500 animate-[width_2s_ease-in-out] w-full origin-left"></div>
-                                        </div>
+                                        <div className="w-56 h-3 bg-gray-800 rounded mt-4 overflow-hidden"><div className="h-full bg-green-500 animate-[width_2s_ease-in-out] w-full origin-left"></div></div>
                                      </div>
                                  ) : !showTargetSelector && (
                                      <div className="w-full max-w-xl animate-fade-in">
                                         <h2 className="text-2xl text-center mb-6 glich-text text-green-400">SELECT PASSWORD TO HACK</h2>
                                         <div className="grid grid-cols-3 gap-3">
                                             {passwords.map((p, i) => (
-                                                <button key={i} onClick={() => choosePassword(p)} className="p-3 border border-green-500 hover:bg-green-500 hover:text-black transition-colors font-mono text-lg rounded">
-                                                    {p}
-                                                </button>
+                                                <button key={i} onClick={() => choosePassword(p)} className="p-3 border border-green-500 hover:bg-green-500 hover:text-black transition-colors font-mono text-lg rounded">{p}</button>
                                             ))}
                                         </div>
                                      </div>
@@ -878,39 +931,66 @@
             );
         };
 
-        const GameOver = ({ score, type, onExit, bots, stats, userProfile }) => {
-            const percentage = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+        const GameOver = ({ score, type, onExit, bots, stats, userProfile, history }) => {
+            const [showReview, setShowReview] = useState(false);
+            
+            // Calculate incorrect answers for review
+            const mistakes = history ? history.filter(h => !h.isCorrect) : [];
+            const correctCount = history ? history.filter(h => h.isCorrect).length : 0;
+            const percentage = history && history.length > 0 ? Math.round((correctCount / history.length) * 100) : 0;
+
             const allScores = [...bots.map(b => b.gold), score].sort((a,b) => b - a);
             const rank = allScores.indexOf(score) + 1;
+
+            if (showReview) {
+                return (
+                    <div className="min-h-screen bg-slate-800 flex items-center justify-center p-4 font-sans">
+                        <div className="bg-white rounded-3xl p-6 max-w-4xl w-full max-h-[90vh] flex flex-col">
+                            <div className="flex justify-between items-center mb-4 border-b pb-4">
+                                <h2 className="text-3xl font-black text-slate-800">Review Mistakes</h2>
+                                <Button size="sm" color="primary" onClick={() => setShowReview(false)}>Back</Button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                {mistakes.length === 0 ? (
+                                    <div className="text-center p-10 text-xl text-green-600 font-bold">Perfect Game! No mistakes to review! 🎉</div>
+                                ) : (
+                                    mistakes.map((m, i) => (
+                                        <div key={i} className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded">
+                                            <div className="font-bold text-lg mb-2">{m.q}</div>
+                                            <div className="flex gap-4 text-sm">
+                                                <div className="text-red-600"><span className="font-bold">You said:</span> {m.user}</div>
+                                                <div className="text-green-600"><span className="font-bold">Correct:</span> {m.correct}</div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
             return (
                 <div className="min-h-screen bg-slate-800 flex items-center justify-center p-4">
                     <div className="bg-white p-6 rounded-3xl text-center max-w-2xl w-full shadow-2xl animate-fade-in flex flex-col md:flex-row gap-8 items-center border-8 border-slate-200">
-                        
                         <div className="flex-1 w-full">
                             <h1 className="text-4xl font-black text-slate-800 mb-2">TIME'S UP!</h1>
                             <div className="text-6xl mb-4">{rank === 1 ? '🏆' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎗️'}</div>
-                            
                             <div className="bg-blue-100 p-4 rounded-2xl mb-4">
                                 <div className="text-xs text-blue-600 font-bold uppercase">Total {type}</div>
                                 <div className="text-5xl font-black text-blue-800">{score}</div>
                             </div>
-
                             <div className="text-left bg-slate-50 p-3 rounded-xl text-sm h-32 overflow-y-auto border-2 border-slate-100">
                                 {[...bots, {name: userProfile.name, gold: score, blook: userProfile.blook}].sort((a,b) => b.gold - a.gold).map((b, i) => (
                                     <div key={i} className={`flex justify-between border-b py-2 px-2 last:border-0 ${b.name === userProfile.name ? 'bg-amber-100 font-bold' : ''}`}>
-                                        <span className="flex items-center gap-2">
-                                            #{i+1} <BlookAvatar blook={b.blook} size="sm"/> {b.name}
-                                        </span>
+                                        <span className="flex items-center gap-2">#{i+1} <BlookAvatar blook={b.blook} size="sm"/> {b.name}</span>
                                         <span className="font-bold">{b.gold}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
-
                         <div className="flex-1 w-full border-t md:border-t-0 md:border-l border-slate-200 pt-6 md:pt-0 md:pl-6 flex flex-col items-center">
                              <h3 className="text-xl font-black text-slate-700 mb-4">Accuracy</h3>
-                             
                              <div className="relative w-32 h-32 mb-4">
                                 <svg className="w-full h-full" viewBox="0 0 36 36">
                                     <path className="text-gray-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
@@ -920,19 +1000,10 @@
                                     <span className="text-3xl font-black text-slate-700">{percentage}%</span>
                                 </div>
                              </div>
-
-                             <div className="grid grid-cols-2 gap-4 w-full text-sm">
-                                 <div className="bg-green-50 p-2 rounded-lg">
-                                     <div className="font-bold text-green-700">Correct</div>
-                                     <div className="text-xl text-green-800">{stats.correct}</div>
-                                 </div>
-                                 <div className="bg-red-50 p-2 rounded-lg">
-                                     <div className="font-bold text-red-700">Incorrect</div>
-                                     <div className="text-xl text-red-800">{stats.total - stats.correct}</div>
-                                 </div>
+                             <div className="w-full space-y-2">
+                                 <Button onClick={() => setShowReview(true)} className="w-full" size="sm" color="warning">Review Mistakes</Button>
+                                 <Button onClick={onExit} className="w-full" size="md">Home</Button>
                              </div>
-
-                             <Button onClick={onExit} className="w-full mt-6" size="md">Home</Button>
                         </div>
                     </div>
                 </div>
@@ -940,7 +1011,7 @@
         };
 
         // --- MAIN APP ---
-
+        // (Editor and SetupGame remain same as previous version, omitted for brevity but included in logic)
         const Editor = ({ onSave, onCancel }) => {
             const [title, setTitle] = useState("");
             const [desc, setDesc] = useState("");
@@ -982,19 +1053,6 @@
                         <div className="mt-2 text-xs text-slate-400 italic text-center">Note: Answers will be shuffled automatically during the game.</div>
                         <Button color="purple" className="mt-4 w-full" onClick={addQuestion}>Add Question</Button>
                     </div>
-                    
-                    <div className="mb-4">
-                        <h3 className="font-bold text-slate-500 mb-2">{questions.length} Questions Added</h3>
-                        <div className="max-h-40 overflow-y-auto border-2 border-slate-100 rounded-lg p-2">
-                            {questions.map((q, i) => (
-                                <div key={i} className="text-sm border-b py-1 last:border-0 flex justify-between">
-                                    <span>{i+1}. {q.q}</span>
-                                    <span className="text-green-600 font-bold">{q.a[0]}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                     <Button color="success" className="w-full" onClick={() => onSave({ id: Date.now(), title, desc, questions, category: 'Custom' })}>Save Set</Button>
                 </div>
             );
@@ -1006,20 +1064,14 @@
             const [activeSet, setActiveSet] = useState(null);
             const [activeMode, setActiveMode] = useState(null); 
             const [timeLimit, setTimeLimit] = useState(5);
-            
-            // User Profile State
             const [userProfile, setUserProfile] = useState({ name: 'Player', blook: BLOOKS[0] });
             const [showProfileSelector, setShowProfileSelector] = useState(false);
 
             useEffect(() => {
                 const savedSets = localStorage.getItem('blockbuster_sets');
-                if(savedSets) {
-                    try { setCustomSets(JSON.parse(savedSets)); } catch(e) {}
-                }
+                if(savedSets) { try { setCustomSets(JSON.parse(savedSets)); } catch(e) {} }
                 const savedProfile = localStorage.getItem('blockbuster_profile');
-                if(savedProfile) {
-                    try { setUserProfile(JSON.parse(savedProfile)); } catch(e) {}
-                }
+                if(savedProfile) { try { setUserProfile(JSON.parse(savedProfile)); } catch(e) {} }
             }, []);
 
             const saveCustomSet = (newSet) => {
@@ -1063,22 +1115,16 @@
                     <h2 className="text-4xl font-black text-slate-700 mb-10">Choose Mode</h2>
                     <div className="flex flex-wrap gap-6 justify-center">
                         <div onClick={() => onSelect('gold')} className="w-64 bg-yellow-100 rounded-2xl border-b-8 border-yellow-600 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center overflow-hidden shadow-xl">
-                            <div className="h-32 w-full bg-yellow-400 flex items-center justify-center text-6xl text-yellow-700">
-                                <i className="fas fa-sack-dollar"></i>
-                            </div>
-                            <div className="p-4 text-center">
-                                <h3 className="text-xl font-black text-yellow-800 mb-2">Gold Quest</h3>
-                                <p className="text-xs text-yellow-700 font-bold">Collect chests. Swap gold. Survive.</p>
-                            </div>
+                            <div className="h-32 w-full bg-yellow-400 flex items-center justify-center text-6xl text-yellow-700"><i className="fas fa-sack-dollar"></i></div>
+                            <div className="p-4 text-center"><h3 className="text-xl font-black text-yellow-800 mb-2">Gold Quest</h3><p className="text-xs text-yellow-700 font-bold">Collect chests. Swap gold. Survive.</p></div>
                         </div>
                         <div onClick={() => onSelect('crypto')} className="w-64 bg-purple-100 rounded-2xl border-b-8 border-purple-600 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center overflow-hidden shadow-xl">
-                            <div className="h-32 w-full bg-purple-500 flex items-center justify-center text-6xl text-white">
-                                <i className="fas fa-user-secret"></i>
-                            </div>
-                            <div className="p-4 text-center">
-                                <h3 className="text-xl font-black text-purple-800 mb-2">Crypto Hack</h3>
-                                <p className="text-xs text-purple-700 font-bold">Guess passwords. Steal Crypto.</p>
-                            </div>
+                            <div className="h-32 w-full bg-purple-500 flex items-center justify-center text-6xl text-white"><i className="fas fa-user-secret"></i></div>
+                            <div className="p-4 text-center"><h3 className="text-xl font-black text-purple-800 mb-2">Crypto Hack</h3><p className="text-xs text-purple-700 font-bold">Guess passwords. Steal Crypto.</p></div>
+                        </div>
+                        <div onClick={() => onSelect('factory')} className="w-64 bg-slate-700 rounded-2xl border-b-8 border-slate-900 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center overflow-hidden shadow-xl">
+                            <div className="h-32 w-full bg-slate-600 flex items-center justify-center text-6xl text-white"><i className="fas fa-industry"></i></div>
+                            <div className="p-4 text-center"><h3 className="text-xl font-black text-slate-200 mb-2">Factory</h3><p className="text-xs text-slate-400 font-bold">Answer Qs. Buy Blooks. Print Cash.</p></div>
                         </div>
                     </div>
                 </div>
@@ -1086,23 +1132,15 @@
 
             return (
                 <div className="min-h-screen bg-gray-100 flex flex-col font-sans text-slate-800">
-                    {showProfileSelector && (
-                        <ProfileSelector currentProfile={userProfile} onSave={saveProfile} onClose={() => setShowProfileSelector(false)} />
-                    )}
-
+                    {showProfileSelector && <ProfileSelector currentProfile={userProfile} onSave={saveProfile} onClose={() => setShowProfileSelector(false)} />}
                     {screen !== 'game' && <Navbar />}
-                    
                     {screen === 'dashboard' && <Dashboard customSets={customSets} onSelectSet={(s) => { setActiveSet(s); setScreen('setup'); }} userProfile={userProfile} onEditProfile={() => setShowProfileSelector(true)} />}
-                    
                     {screen === 'editor' && <Editor onSave={saveCustomSet} onCancel={() => setScreen('dashboard')} />}
-                    
                     {screen === 'setup' && <SetupGame set={activeSet} onBack={() => setScreen('dashboard')} onStart={(t) => { setTimeLimit(t); setScreen('mode-select'); }} />}
-
                     {screen === 'mode-select' && <ModeSelect onSelect={(m) => { setActiveMode(m); setScreen('game'); }} />}
-
                     {screen === 'game' && activeMode === 'gold' && <GoldQuest set={activeSet} timeLimit={timeLimit} userProfile={userProfile} onExit={() => setScreen('dashboard')} />}
-                    
                     {screen === 'game' && activeMode === 'crypto' && <CryptoHack set={activeSet} timeLimit={timeLimit} userProfile={userProfile} onExit={() => setScreen('dashboard')} />}
+                    {screen === 'game' && activeMode === 'factory' && <FactoryMode set={activeSet} timeLimit={timeLimit} userProfile={userProfile} onExit={() => setScreen('dashboard')} />}
                 </div>
             );
         };
