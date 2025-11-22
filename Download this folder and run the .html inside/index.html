@@ -15,7 +15,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Font Awesome -->
+    <!-- Font Awesome (Icons from the Internet) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- LOAD THE QUESTIONS FROM EXTERNAL FILE -->
@@ -43,11 +43,18 @@
                         'bounce-short': 'bounce 0.5s infinite',
                         'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
                     },
                     keyframes: {
                         fadeIn: {
                             '0%': { opacity: '0', transform: 'translateY(10px)' },
                             '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                            '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                            '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
                         }
                     }
                 }
@@ -75,6 +82,19 @@
             max-width: 1100px;
             margin: 0 auto;
         }
+        
+        /* Custom Chest Styling */
+        .chest-container {
+            perspective: 1000px;
+        }
+        .chest-lid {
+            transition: transform 0.5s;
+            transform-origin: bottom;
+        }
+        .chest-open .chest-lid {
+            transform: rotateX(180deg) translateY(10px);
+            opacity: 0; /* Simple fade out for open effect */
+        }
     </style>
 </head>
 <body>
@@ -87,7 +107,6 @@
 
         // --- DATA LOADING & SHUFFLING LOGIC ---
         
-        // Helper to shuffle an array
         const shuffleArray = (array) => {
             const newArray = [...array];
             for (let i = newArray.length - 1; i > 0; i--) {
@@ -97,37 +116,43 @@
             return newArray;
         };
 
-        // Helper to prepare game data: shuffles questions AND answers
         const prepareGameData = (questions) => {
             return questions.map(q => {
-                // Get the actual text of the correct answer before shuffling
                 const correctText = q.a[q.correct];
-                
-                // Shuffle the answers array
                 const shuffledAnswers = shuffleArray(q.a);
-                
-                // Find where the correct answer moved to
                 const newCorrectIndex = shuffledAnswers.indexOf(correctText);
-                
-                return {
-                    ...q,
-                    a: shuffledAnswers,
-                    correct: newCorrectIndex
-                };
-            }).sort(() => Math.random() - 0.5); // Also shuffle the order of questions
+                return { ...q, a: shuffledAnswers, correct: newCorrectIndex };
+            }).sort(() => Math.random() - 0.5);
         };
 
         const PREMADE_SETS = window.BLOCKBUSTER_DATA || [];
 
+        // Updated Bots with Font Awesome Icons
         const BOTS = [
-            { id: 1, name: "Dino", icon: "🦖", gold: 0 },
-            { id: 2, name: "Uni", icon: "🦄", gold: 0 },
-            { id: 3, name: "Foxy", icon: "🦊", gold: 0 },
-            { id: 4, name: "Alien", icon: "👽", gold: 0 },
-            { id: 5, name: "Ghost", icon: "👻", gold: 0 },
-            { id: 6, name: "Robot", icon: "🤖", gold: 0 },
-            { id: 7, name: "Ninja", icon: "🥷", gold: 0 },
+            { id: 1, name: "Dino", icon: "fa-dragon", color: "text-green-500", gold: 0 },
+            { id: 2, name: "Uni", icon: "fa-horse-head", color: "text-pink-500", gold: 0 },
+            { id: 3, name: "Foxy", icon: "fa-cat", color: "text-orange-500", gold: 0 }, // Cat as stand-in for fox
+            { id: 4, name: "Alien", icon: "fa-user-astronaut", color: "text-purple-500", gold: 0 },
+            { id: 5, name: "Ghost", icon: "fa-ghost", color: "text-gray-400", gold: 0 },
+            { id: 6, name: "Robot", icon: "fa-robot", color: "text-blue-500", gold: 0 },
+            { id: 7, name: "Ninja", icon: "fa-user-ninja", color: "text-red-500", gold: 0 },
         ];
+
+        // --- VISUAL HELPERS ---
+
+        const getCategoryIcon = (cat) => {
+            switch(cat) {
+                case 'Math': return <i className="fas fa-calculator text-blue-500"></i>;
+                case 'Science': return <i className="fas fa-flask text-green-500"></i>;
+                case 'Geography': return <i className="fas fa-globe-americas text-teal-500"></i>;
+                case 'History': return <i className="fas fa-landmark text-amber-600"></i>;
+                case 'Literature': return <i className="fas fa-book-open text-purple-500"></i>;
+                case 'English': return <i className="fas fa-pen-nib text-indigo-500"></i>;
+                case 'Tech': return <i className="fas fa-microchip text-slate-600"></i>;
+                case 'General': return <i className="fas fa-brain text-pink-500"></i>;
+                default: return <i className="fas fa-layer-group text-gray-500"></i>;
+            }
+        };
 
         // --- SHARED COMPONENTS ---
 
@@ -165,10 +190,10 @@
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {bots.map(b => (
                             <div key={b.id} onClick={() => onSelect(b)} className="cursor-pointer bg-slate-100 hover:bg-blue-100 hover:border-blue-400 border-2 border-slate-200 rounded-xl p-4 flex flex-col items-center transition-colors">
-                                <div className="text-4xl mb-2">{b.icon}</div>
+                                <div className={`text-4xl mb-2 ${b.color}`}><i className={`fas ${b.icon}`}></i></div>
                                 <div className="font-bold text-lg">{b.name}</div>
                                 <div className="text-sm font-bold text-amber-600">
-                                    {b.gold} {title.includes("Crypto") ? "⚡" : "💰"}
+                                    {b.gold} {title.includes("Crypto") ? <i className="fas fa-bolt"></i> : <i className="fas fa-coins"></i>}
                                 </div>
                             </div>
                         ))}
@@ -197,11 +222,11 @@
             return (
                 <div className="p-6 max-w-6xl mx-auto w-full game-container">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-3xl font-black text-slate-700">Select a Set</h2>
+                        <h2 className="text-3xl font-black text-slate-700"><i className="fas fa-gamepad mr-2 text-purple-500"></i> Select a Set</h2>
                         <div className="flex gap-2 overflow-x-auto pb-2">
-                            <button onClick={() => setFilter('All')} className={`px-4 py-1 rounded-full text-sm font-bold ${filter === 'All' ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600'}`}>All</button>
+                            <button onClick={() => setFilter('All')} className={`px-4 py-1 rounded-full text-sm font-bold whitespace-nowrap ${filter === 'All' ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>All</button>
                             {categories.map(c => (
-                                <button key={c} onClick={() => setFilter(c)} className={`px-4 py-1 rounded-full text-sm font-bold ${filter === c ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600'}`}>{c}</button>
+                                <button key={c} onClick={() => setFilter(c)} className={`px-4 py-1 rounded-full text-sm font-bold whitespace-nowrap ${filter === c ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>{c}</button>
                             ))}
                         </div>
                     </div>
@@ -209,8 +234,8 @@
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {allSets.filter(s => filter === 'All' || (s.category || 'Custom') === filter).map((set, idx) => (
                             <div key={idx} className="bg-white rounded-xl border-4 border-slate-200 overflow-hidden hover:border-purple-400 transition-colors group cursor-pointer flex flex-col shadow-sm" onClick={() => onSelectSet(set)}>
-                                <div className="h-24 bg-slate-100 flex items-center justify-center text-3xl border-b-2 border-slate-100 group-hover:bg-purple-50 transition-colors">
-                                    {set.category === 'Math' ? '📐' : set.category === 'Science' ? '🧪' : set.category === 'Geography' ? '🌍' : set.category === 'Tech' ? '💻' : set.category === 'English' ? '📖' : set.category === 'History' ? '🏛️' : set.category === 'Literature' ? '📚' : '📝'}
+                                <div className="h-24 bg-slate-100 flex items-center justify-center text-4xl border-b-2 border-slate-100 group-hover:bg-purple-50 transition-colors">
+                                    {getCategoryIcon(set.category || 'Custom')}
                                 </div>
                                 <div className="p-4 flex-1 flex flex-col">
                                     <div className="flex justify-between items-start">
@@ -219,7 +244,7 @@
                                     </div>
                                     <p className="text-slate-500 text-xs mb-4 flex-1 mt-1">{set.desc}</p>
                                     <div className="flex justify-between items-center mt-auto">
-                                        <span className="text-xs font-bold text-slate-400">{set.questions.length} Qs</span>
+                                        <span className="text-xs font-bold text-slate-400"><i className="far fa-question-circle mr-1"></i> {set.questions.length} Qs</span>
                                         <Button size="sm" color="primary">Play</Button>
                                     </div>
                                 </div>
@@ -235,15 +260,15 @@
 
             return (
                 <div className="min-h-screen flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl border-4 border-slate-200 p-8 max-w-md w-full text-center shadow-xl">
+                    <div className="bg-white rounded-2xl border-4 border-slate-200 p-8 max-w-md w-full text-center shadow-xl animate-fade-in">
                         <h2 className="text-3xl font-black text-slate-700 mb-2">{set.title}</h2>
                         <p className="text-slate-500 mb-8">Game Setup</p>
 
                         <div className="mb-8">
-                            <label className="block text-sm font-bold text-slate-400 uppercase mb-2">Game Duration</label>
+                            <label className="block text-sm font-bold text-slate-400 uppercase mb-2"><i className="fas fa-clock mr-1"></i> Game Duration</label>
                             <div className="grid grid-cols-2 gap-4">
                                 {[3, 5, 7, 10].map(t => (
-                                    <div key={t} onClick={() => setTime(t)} className={`cursor-pointer p-4 rounded-xl border-b-4 font-bold text-xl transition-all ${time === t ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-slate-100 border-slate-300 text-slate-500'}`}>
+                                    <div key={t} onClick={() => setTime(t)} className={`cursor-pointer p-4 rounded-xl border-b-4 font-bold text-xl transition-all ${time === t ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200'}`}>
                                         {t} Mins
                                     </div>
                                 ))}
@@ -259,23 +284,23 @@
             );
         };
 
-        const QuestionScreen = ({ question, onAnswer, total, current }) => {
+        const QuestionScreen = ({ question, onAnswer }) => {
             const colors = ['bg-red-500 border-red-700', 'bg-blue-500 border-blue-700', 'bg-green-500 border-green-700', 'bg-yellow-500 border-yellow-600'];
-            const icons = ['🔺', '🔷', '🟩', '🟡'];
+            const icons = ['fa-square', 'fa-circle', 'fa-star', 'fa-heart'];
 
             return (
                 <div className="flex flex-col items-center justify-center h-full p-4 max-w-4xl mx-auto w-full animate-fade-in">
-                    <div className="bg-white w-full p-5 rounded-xl border-b-4 border-slate-300 text-center mb-6 shadow-lg relative">
-                        <h2 className="text-2xl font-black text-slate-800">{question.q}</h2>
+                    <div className="bg-white w-full p-6 rounded-xl border-b-8 border-slate-300 text-center mb-8 shadow-lg relative">
+                        <h2 className="text-2xl md:text-3xl font-black text-slate-800">{question.q}</h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                         {question.a.map((ans, idx) => (
                             <button 
                                 key={idx} 
                                 onClick={() => onAnswer(idx)}
-                                className={`${colors[idx % 4]} text-white text-lg font-bold p-5 rounded-lg border-b-4 shadow-md active:translate-y-1 active:border-b-0 active:shadow-none transition-all flex items-center gap-3`}
+                                className={`${colors[idx % 4]} text-white text-lg md:text-xl font-bold p-6 rounded-xl border-b-4 shadow-md active:translate-y-1 active:border-b-0 active:shadow-none transition-all flex items-center gap-4`}
                             >
-                                <span className="text-2xl opacity-80">{icons[idx % 4]}</span>
+                                <i className={`fas ${icons[idx % 4]} text-2xl opacity-50`}></i>
                                 <span className="text-left flex-1">{ans}</span>
                             </button>
                         ))}
@@ -295,33 +320,21 @@
             const [stats, setStats] = useState({ correct: 0, total: 0 });
             const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
             
-            // Interaction State
             const [openedChest, setOpenedChest] = useState(null); 
             const [chestContent, setChestContent] = useState(null);
             const [showTargetSelector, setShowTargetSelector] = useState(false);
-            const [pendingAction, setPendingAction] = useState(null); // 'swap', 'steal10', 'steal25'
+            const [pendingAction, setPendingAction] = useState(null);
 
-            // Init shuffle with FULL RANDOMIZATION
             useEffect(() => {
-                // This processes the set to shuffle questions AND their answers
-                const preparedSet = prepareGameData(set.questions);
-                setShuffledQuestions(preparedSet);
+                setShuffledQuestions(prepareGameData(set.questions));
             }, [set]);
 
-            // Timer
             useEffect(() => {
                 if (state === 'finished') return;
                 const timer = setInterval(() => {
                     setTimeLeft(prev => {
-                        if (prev <= 1) {
-                            setState('finished');
-                            clearInterval(timer);
-                            return 0;
-                        }
-                        // Bot passive income logic
-                        if (prev % 5 === 0) {
-                             setBots(curr => curr.map(b => ({...b, gold: b.gold + Math.floor(Math.random() * 15)})));
-                        }
+                        if (prev <= 1) { setState('finished'); clearInterval(timer); return 0; }
+                        if (prev % 5 === 0) { setBots(curr => curr.map(b => ({...b, gold: b.gold + Math.floor(Math.random() * 15)}))); }
                         return prev - 1;
                     });
                 }, 1000);
@@ -343,7 +356,6 @@
             };
 
             const nextQuestion = () => {
-                // Loop questions
                 setQIndex(prev => (prev + 1) % shuffledQuestions.length);
                 setOpenedChest(null);
                 setChestContent(null);
@@ -356,13 +368,11 @@
                 if(openedChest !== null) return;
                 setOpenedChest(chestIdx);
                 
-                // Enhanced Reward Logic
                 const r = Math.random();
                 let reward = {};
                 
-                // 40% Gold, 20% Multiplier, 20% Attack, 20% Loss/Nothing
                 if (r < 0.30) { reward = { type: 'gold', val: 10 + Math.floor(Math.random()*90) }; }
-                else if (r < 0.40) { reward = { type: 'triple', val: 0 }; } // Triple Gold
+                else if (r < 0.40) { reward = { type: 'triple', val: 0 }; }
                 else if (r < 0.50) { reward = { type: 'double', val: 0 }; }
                 else if (r < 0.60) { reward = { type: 'swap', val: 0, action: true }; }
                 else if (r < 0.70) { reward = { type: 'steal25', val: 0, action: true }; }
@@ -372,7 +382,6 @@
 
                 setChestContent(reward);
 
-                // Apply Immediate Rewards
                 setTimeout(() => {
                     if (reward.type === 'gold') { setGold(g => g + reward.val); setTimeout(nextQuestion, 1500); }
                     else if (reward.type === 'double') { setGold(g => g * 2); setTimeout(nextQuestion, 1500); }
@@ -380,7 +389,6 @@
                     else if (reward.type === 'lose10') { setGold(g => Math.floor(g * 0.9)); setTimeout(nextQuestion, 1500); }
                     else if (reward.type === 'lose25') { setGold(g => Math.floor(g * 0.75)); setTimeout(nextQuestion, 1500); }
                     else if (reward.action) {
-                        // Needs target selection
                         setPendingAction(reward.type);
                         setTimeout(() => setShowTargetSelector(true), 1000);
                     }
@@ -409,54 +417,58 @@
             if(state === 'finished') return <GameOver score={gold} type="Gold" onExit={onExit} bots={bots} stats={stats} />;
 
             return (
-                <div className="bg-amber-300 min-h-screen flex flex-col">
+                <div className="bg-amber-300 min-h-screen flex flex-col font-sans">
                     {showTargetSelector && <PlayerSelector bots={bots} onSelect={executeAction} title={pendingAction === 'swap' ? "Swap Gold!" : "Steal Gold!"} />}
 
-                    {/* Header */}
-                    <div className="bg-amber-500 p-2 flex justify-between items-center text-white font-black px-4 border-b-4 border-amber-700 shadow-md sticky top-0 z-30">
+                    <div className="bg-amber-600 p-2 flex justify-between items-center text-white font-black px-4 border-b-4 border-amber-800 shadow-md sticky top-0 z-30">
                         <div className="flex items-center gap-4">
-                            <button onClick={onExit} className="bg-amber-700 hover:bg-amber-800 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm border-b-2 border-amber-900 active:border-b-0 active:translate-y-0.5">
+                            <button onClick={onExit} className="bg-amber-800 hover:bg-amber-900 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm border-b-2 border-amber-950 active:border-b-0 active:translate-y-0.5">
                                 <i className="fas fa-home mr-1"></i> Exit
                             </button>
-                            <div className="text-xl">💰 {gold}</div>
+                            <div className="text-xl flex items-center gap-2"><i className="fas fa-coins text-yellow-300"></i> {gold}</div>
                         </div>
                         <div className="text-xl font-mono bg-black bg-opacity-20 px-3 rounded">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
                     </div>
 
-                    {/* Main Area */}
                     <div className="flex-1 relative flex flex-col justify-center">
                         {state === 'playing' && <QuestionScreen question={shuffledQuestions[qIndex]} onAnswer={handleAnswer} />}
                         
                         {state === 'correct' && (
                             <div className="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-90 z-10">
-                                <h1 className="text-5xl text-white font-black animate-bounce">CORRECT!</h1>
+                                <div className="text-center text-white animate-bounce">
+                                    <i className="fas fa-check-circle text-8xl mb-4"></i>
+                                    <h1 className="text-5xl font-black">CORRECT!</h1>
+                                </div>
                             </div>
                         )}
 
                         {state === 'incorrect' && (
                             <div className="absolute inset-0 flex items-center justify-center bg-red-500 bg-opacity-90 z-10">
-                                <h1 className="text-5xl text-white font-black">WRONG!</h1>
+                                <div className="text-center text-white">
+                                    <i className="fas fa-times-circle text-8xl mb-4"></i>
+                                    <h1 className="text-5xl font-black">WRONG!</h1>
+                                </div>
                             </div>
                         )}
 
                         {state === 'chest' && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 bg-opacity-90 z-20 p-4">
-                                <h2 className="text-3xl text-white font-black mb-6">Choose a Chest!</h2>
+                                <h2 className="text-3xl text-white font-black mb-8"><i className="fas fa-gem mr-2 text-purple-400"></i> Choose a Chest!</h2>
                                 <div className="flex gap-4 md:gap-8 justify-center w-full max-w-3xl">
                                     {[0, 1, 2].map(i => (
-                                        <div key={i} onClick={() => openChest(i)} className={`w-32 h-32 md:w-40 md:h-40 cursor-pointer transition-transform ${openedChest === null ? 'hover:scale-105' : ''}`}>
+                                        <div key={i} onClick={() => openChest(i)} className={`w-32 h-32 md:w-40 md:h-40 cursor-pointer transition-transform ${openedChest === null ? 'hover:scale-105' : ''} chest-container`}>
                                             {openedChest === i ? (
                                                  <div className="w-full h-full flex items-center justify-center bg-yellow-200 rounded-xl border-4 border-yellow-500 animate-pulse">
                                                     {chestContent ? (
                                                         <div className="text-center transform scale-90">
                                                             <div className="text-4xl mb-1">
-                                                                {chestContent.type === 'gold' && '💰'}
-                                                                {chestContent.type === 'triple' && '✖️3️⃣'}
-                                                                {chestContent.type === 'double' && '✖️2️⃣'}
-                                                                {chestContent.type === 'swap' && '🔄'}
-                                                                {chestContent.type === 'steal10' && '🔫'}
-                                                                {chestContent.type === 'steal25' && '💣'}
-                                                                {chestContent.type.includes('lose') && '📉'}
+                                                                {chestContent.type === 'gold' && <i className="fas fa-coins text-yellow-600"></i>}
+                                                                {chestContent.type === 'triple' && <i className="fas fa-cubes text-purple-600"></i>}
+                                                                {chestContent.type === 'double' && <i className="fas fa-cube text-blue-600"></i>}
+                                                                {chestContent.type === 'swap' && <i className="fas fa-exchange-alt text-orange-500"></i>}
+                                                                {chestContent.type === 'steal10' && <i className="fas fa-mask text-gray-700"></i>}
+                                                                {chestContent.type === 'steal25' && <i className="fas fa-bomb text-black"></i>}
+                                                                {chestContent.type.includes('lose') && <i className="fas fa-chart-line-down text-red-600"></i>}
                                                             </div>
                                                             <div className="font-bold text-yellow-900 text-xs md:text-sm uppercase">
                                                                 {chestContent.type === 'gold' && `+${chestContent.val}`}
@@ -472,7 +484,13 @@
                                                     ) : "..."}
                                                  </div>
                                             ) : (
-                                                openedChest === null && <div className="w-full h-full bg-yellow-600 rounded-t-full border-b-8 border-yellow-800 shadow-2xl flex items-center justify-center text-3xl">🔒</div>
+                                                // Custom SVG Chest
+                                                openedChest === null && (
+                                                    <div className="w-full h-full bg-yellow-600 rounded-lg border-4 border-yellow-800 shadow-xl flex items-center justify-center relative animate-shake hover:bg-yellow-500">
+                                                        <div className="absolute top-1/2 w-full h-2 bg-yellow-900 opacity-30"></div>
+                                                        <i className="fas fa-lock text-yellow-900 text-3xl z-10"></i>
+                                                    </div>
+                                                )
                                             )}
                                         </div>
                                     ))}
@@ -481,13 +499,14 @@
                         )}
                     </div>
                     
-                    {/* Leaderboard Preview */}
                     <div className="h-28 bg-slate-900 text-white p-3 overflow-y-auto text-sm">
                         <div className="flex flex-wrap gap-2 justify-center">
-                             <div className="bg-amber-500 px-3 py-1 rounded-full font-bold border-b-2 border-amber-700 shadow-sm">YOU: {gold}</div>
+                             <div className="bg-amber-500 px-3 py-1 rounded-full font-bold border-b-2 border-amber-700 shadow-sm flex items-center gap-2">
+                                <i className="fas fa-user"></i> YOU: {gold}
+                             </div>
                              {bots.map((b, i) => (
                                  <div key={i} className="bg-slate-700 px-3 py-1 rounded-full text-xs flex items-center gap-1">
-                                    <span>{b.icon}</span>
+                                    <i className={`fas ${b.icon} ${b.color}`}></i>
                                     <span>{b.name}: {b.gold}</span>
                                  </div>
                              ))}
@@ -505,31 +524,22 @@
             const [bots, setBots] = useState(BOTS.map(b => ({...b, gold: Math.floor(Math.random() * 50)})));
             const [passwords, setPasswords] = useState([]);
             const [hacking, setHacking] = useState(false);
-            const [hackTarget, setHackTarget] = useState(null); // Password string
+            const [hackTarget, setHackTarget] = useState(null); 
             const [stats, setStats] = useState({ correct: 0, total: 0 });
             const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
             const [showTargetSelector, setShowTargetSelector] = useState(false);
 
-            // Init shuffle with FULL RANDOMIZATION
             useEffect(() => {
-                const preparedSet = prepareGameData(set.questions);
-                setShuffledQuestions(preparedSet);
+                setShuffledQuestions(prepareGameData(set.questions));
                 generatePasswords();
             }, [set]);
 
-            // Timer
             useEffect(() => {
                 if (state === 'finished') return;
                 const timer = setInterval(() => {
                     setTimeLeft(prev => {
-                        if (prev <= 1) {
-                            setState('finished');
-                            clearInterval(timer);
-                            return 0;
-                        }
-                        if (prev % 3 === 0) { // Faster passive gain in crypto
-                             setBots(curr => curr.map(b => ({...b, gold: b.gold + Math.floor(Math.random() * 10)})));
-                        }
+                        if (prev <= 1) { setState('finished'); clearInterval(timer); return 0; }
+                        if (prev % 3 === 0) { setBots(curr => curr.map(b => ({...b, gold: b.gold + Math.floor(Math.random() * 10)}))); }
                         return prev - 1;
                     });
                 }, 1000);
@@ -564,30 +574,23 @@
             const choosePassword = (pwd) => {
                 setHackTarget(pwd);
                 setHacking(true);
-                
                 setTimeout(() => {
-                    // Success logic
                     setHacking(false);
                     setHackTarget(null);
-                    // Instead of just getting crypto, you trigger a steal
-                    const success = Math.random() > 0.2; // 80% success rate
-                    
+                    const success = Math.random() > 0.2; 
                     if(success) {
                         setShowTargetSelector(true);
                     } else {
-                        // Failed hack
                         nextQuestion();
                     }
                 }, 1500); 
             };
 
             const stealFromBot = (targetBot) => {
-                const amount = 10 + Math.floor(Math.random() * 20); // Base mine
+                const amount = 10 + Math.floor(Math.random() * 20); 
                 const stolen = Math.min(targetBot.gold, 20 + Math.floor(Math.random() * 30));
-                
                 setCrypto(c => c + amount + stolen);
                 setBots(bots.map(b => b.id === targetBot.id ? {...b, gold: Math.max(0, b.gold - stolen)} : b));
-                
                 setShowTargetSelector(false);
                 nextQuestion();
             };
@@ -605,13 +608,12 @@
                 <div className="bg-slate-900 min-h-screen flex flex-col font-mono text-sm">
                     {showTargetSelector && <PlayerSelector bots={bots} onSelect={stealFromBot} title="Hack Successful! Steal From Who?" />}
 
-                     {/* Header */}
                      <div className="bg-slate-800 p-2 flex justify-between items-center text-green-400 font-bold px-4 border-b border-slate-700 shadow-neon sticky top-0 z-30">
                         <div className="flex items-center gap-4">
                             <button onClick={onExit} className="bg-slate-700 hover:bg-slate-600 text-green-400 border border-green-500 px-3 py-1 rounded text-xs font-bold">
                                 <i className="fas fa-arrow-left mr-1"></i> EXIT
                             </button>
-                            <div className="text-xl">⚡ {crypto}</div>
+                            <div className="text-xl"><i className="fas fa-bolt mr-2"></i> {crypto}</div>
                         </div>
                         <div className="text-xl text-green-500">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</div>
                     </div>
@@ -619,7 +621,6 @@
                     <div className="flex-1 relative flex flex-col justify-center">
                         {state === 'playing' && <QuestionScreen question={shuffledQuestions[qIndex]} onAnswer={handleAnswer} />}
                         
-                        {/* Hack Overlay */}
                         {(state === 'hack' || hacking) && (
                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-95 z-20 text-green-500 p-4">
                                  {hacking ? (
@@ -635,7 +636,7 @@
                                      </div>
                                  ) : !showTargetSelector && (
                                      <div className="w-full max-w-xl animate-fade-in">
-                                        <h2 className="text-2xl text-center mb-6 glich-text">SELECT PASSWORD TO HACK</h2>
+                                        <h2 className="text-2xl text-center mb-6 glich-text text-green-400">SELECT PASSWORD TO HACK</h2>
                                         <div className="grid grid-cols-3 gap-3">
                                             {passwords.map((p, i) => (
                                                 <button key={i} onClick={() => choosePassword(p)} className="p-3 border border-green-500 hover:bg-green-500 hover:text-black transition-colors font-mono text-lg rounded">
@@ -654,7 +655,6 @@
 
         const GameOver = ({ score, type, onExit, bots, stats }) => {
             const percentage = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
-            // Determine Rank
             const allScores = [...bots.map(b => b.gold), score].sort((a,b) => b - a);
             const rank = allScores.indexOf(score) + 1;
 
@@ -672,9 +672,9 @@
                             </div>
 
                             <div className="text-left bg-slate-50 p-3 rounded-xl text-sm h-32 overflow-y-auto border-2 border-slate-100">
-                                {[...bots, {name: 'YOU', gold: score, icon: '👤'}].sort((a,b) => b.gold - a.gold).map((b, i) => (
+                                {[...bots, {name: 'YOU', gold: score, icon: 'fa-user', color: 'text-black'}].sort((a,b) => b.gold - a.gold).map((b, i) => (
                                     <div key={i} className={`flex justify-between border-b py-2 px-2 last:border-0 ${b.name === 'YOU' ? 'bg-amber-100 font-bold' : ''}`}>
-                                        <span>#{i+1} {b.icon || ''} {b.name}</span>
+                                        <span>#{i+1} <i className={`fas ${b.icon} ${b.color || ''} mx-1`}></i> {b.name}</span>
                                         <span className="font-bold">{b.gold}</span>
                                     </div>
                                 ))}
@@ -719,24 +719,14 @@
             const [desc, setDesc] = useState("");
             const [questions, setQuestions] = useState([]);
             const [qText, setQText] = useState("");
-            const [a1, setA1] = useState(""); // Intended correct
+            const [a1, setA1] = useState(""); 
             const [a2, setA2] = useState("");
             const [a3, setA3] = useState("");
             const [a4, setA4] = useState("");
 
             const addQuestion = () => {
                 if(!qText || !a1 || !a2) return alert("Question + 2 answers min");
-                
-                // For storage, we just save them as is. The GAME ENGINE will shuffle them later.
-                // But to be safe for the 'correct' index logic, we can store them straight
-                // and let the engine handle the display shuffle.
-                
-                // However, traditionally we want to store them so the Creator knows a1 is correct.
-                // So we store: q: text, a: [correct, wrong1, wrong2...], correct: 0
-                // The game engine's 'prepareGameData' will shuffle this at runtime.
-                
                 const rawAnswers = [a1, a2, a3, a4].filter(a => a);
-                
                 setQuestions([...questions, { q: qText, a: rawAnswers, correct: 0 }]);
                 setQText(""); setA1(""); setA2(""); setA3(""); setA4("");
             };
@@ -787,10 +777,9 @@
             const [screen, setScreen] = useState('dashboard'); 
             const [customSets, setCustomSets] = useState([]);
             const [activeSet, setActiveSet] = useState(null);
-            const [activeMode, setActiveMode] = useState(null); // 'gold', 'crypto'
+            const [activeMode, setActiveMode] = useState(null); 
             const [timeLimit, setTimeLimit] = useState(5);
 
-            // Load custom sets from local storage on mount
             useEffect(() => {
                 const saved = localStorage.getItem('blockbuster_sets');
                 if(saved) {
@@ -809,15 +798,14 @@
                 setScreen('dashboard');
             };
 
-            // Navbar
             const Navbar = () => (
                 <div className="bg-purple-600 p-4 shadow-lg flex justify-between items-center border-b-4 border-purple-800 sticky top-0 z-50">
                     <div className="flex items-center gap-2 text-white cursor-pointer" onClick={() => { setScreen('dashboard'); setActiveSet(null); }}>
-                        <div className="bg-white text-purple-600 p-2 rounded-lg font-black text-xl">B</div>
+                        <div className="bg-white text-purple-600 p-2 rounded-lg font-black text-xl shadow-md">B</div>
                         <h1 className="text-2xl font-black tracking-wider">BLOCKBUSTER ULT</h1>
                     </div>
                     <div className="flex gap-2">
-                        <Button size="sm" color="warning" onClick={() => setScreen('editor')}><i className="fas fa-pen"></i> Create</Button>
+                        <Button size="sm" color="warning" onClick={() => setScreen('editor')}><i className="fas fa-pen mr-1"></i> Create</Button>
                     </div>
                 </div>
             );
@@ -830,14 +818,18 @@
                     <h2 className="text-4xl font-black text-slate-700 mb-10">Choose Mode</h2>
                     <div className="flex flex-wrap gap-6 justify-center">
                         <div onClick={() => onSelect('gold')} className="w-64 bg-yellow-100 rounded-2xl border-b-8 border-yellow-600 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center overflow-hidden shadow-xl">
-                            <div className="h-32 w-full bg-yellow-400 flex items-center justify-center text-5xl">💰</div>
+                            <div className="h-32 w-full bg-yellow-400 flex items-center justify-center text-6xl text-yellow-700">
+                                <i className="fas fa-sack-dollar"></i>
+                            </div>
                             <div className="p-4 text-center">
                                 <h3 className="text-xl font-black text-yellow-800 mb-2">Gold Quest</h3>
                                 <p className="text-xs text-yellow-700 font-bold">Collect chests. Swap gold. Survive.</p>
                             </div>
                         </div>
                         <div onClick={() => onSelect('crypto')} className="w-64 bg-purple-100 rounded-2xl border-b-8 border-purple-600 cursor-pointer hover:scale-105 transition-transform flex flex-col items-center overflow-hidden shadow-xl">
-                            <div className="h-32 w-full bg-purple-500 flex items-center justify-center text-5xl text-white">💻</div>
+                            <div className="h-32 w-full bg-purple-500 flex items-center justify-center text-6xl text-white">
+                                <i className="fas fa-user-secret"></i>
+                            </div>
                             <div className="p-4 text-center">
                                 <h3 className="text-xl font-black text-purple-800 mb-2">Crypto Hack</h3>
                                 <p className="text-xs text-purple-700 font-bold">Guess passwords. Steal Crypto.</p>
