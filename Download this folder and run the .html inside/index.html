@@ -86,8 +86,7 @@
         const { useState, useEffect, useRef, useCallback } = React;
 
         // --- DATA LOADING ---
-        // Instead of hardcoding here, we load from window.BLOCKBUSTER_DATA
-        // If the file is missing, we provide an empty array to prevent crash.
+        // Load premade sets from the external file
         const PREMADE_SETS = window.BLOCKBUSTER_DATA || [];
 
         const BOTS = [
@@ -156,7 +155,7 @@
             const categories = [...new Set(allSets.map(s => s.category || 'Custom'))];
             const [filter, setFilter] = useState('All');
 
-            if (PREMADE_SETS.length === 0) {
+            if (PREMADE_SETS.length === 0 && customSets.length === 0) {
                 return (
                     <div className="p-10 text-center">
                         <h1 className="text-3xl font-bold text-red-500">Error Loading Questions</h1>
