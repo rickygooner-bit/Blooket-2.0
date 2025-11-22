@@ -44,6 +44,7 @@
                         'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'fade-in': 'fadeIn 0.5s ease-out forwards',
                         'pop-up': 'popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
                     },
                     keyframes: {
                         fadeIn: {
@@ -53,6 +54,12 @@
                         popUp: {
                             '0%': { opacity: '0', transform: 'scale(0.5) translateY(20px)' },
                             '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+                        },
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                            '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                            '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
                         }
                     }
                 }
@@ -81,7 +88,7 @@
             margin: 0 auto;
         }
         
-        /* --- NEW CHEST STYLES --- */
+        /* Custom Chest Styling */
         .chest-wrapper {
             position: relative;
             width: 100%;
@@ -106,8 +113,8 @@
         }
         .chest-lid {
             position: absolute;
-            bottom: 55%; /* Sit exactly on top of body */
-            left: 8%; /* Slightly wider than body */
+            bottom: 55%;
+            left: 8%;
             width: 84%;
             height: 35%;
             background: linear-gradient(to bottom, #fbbf24, #d97706);
@@ -127,16 +134,33 @@
             border: 3px solid #78350f;
             border-radius: 4px;
             position: absolute;
-            bottom: -12px; /* Hang over the edge */
+            bottom: -12px;
             left: 50%;
             transform: translateX(-50%);
         }
-        /* Animation state for open chest */
         .is-open .chest-lid {
             transform: rotateX(110deg) translateY(-10px);
         }
         .is-open .chest-body {
             filter: brightness(0.8);
+        }
+
+        /* Blook Avatar Styles */
+        .blook-avatar {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.5rem;
+            border-bottom: 4px solid rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        .blook-avatar:active {
+            border-bottom-width: 0px;
+            transform: translateY(4px);
         }
     </style>
 </head>
@@ -148,7 +172,7 @@
 
         const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- DATA LOADING & SHUFFLING LOGIC ---
+        // --- DATA ---
         const shuffleArray = (array) => {
             const newArray = [...array];
             for (let i = newArray.length - 1; i > 0; i--) {
@@ -169,14 +193,38 @@
 
         const PREMADE_SETS = window.BLOCKBUSTER_DATA || [];
 
+        // --- BLOOK DEFINITIONS ---
+        const BLOOKS = [
+            { id: 'wizard', icon: 'fa-hat-wizard', color: 'bg-purple-600' },
+            { id: 'dragon', icon: 'fa-dragon', color: 'bg-red-600' },
+            { id: 'ghost', icon: 'fa-ghost', color: 'bg-gray-400' },
+            { id: 'robot', icon: 'fa-robot', color: 'bg-blue-500' },
+            { id: 'alien', icon: 'fa-user-astronaut', color: 'bg-green-500' },
+            { id: 'ninja', icon: 'fa-user-ninja', color: 'bg-slate-800' },
+            { id: 'king', icon: 'fa-crown', color: 'bg-yellow-500' },
+            { id: 'cat', icon: 'fa-cat', color: 'bg-orange-400' },
+            { id: 'dog', icon: 'fa-dog', color: 'bg-amber-700' },
+            { id: 'fish', icon: 'fa-fish', color: 'bg-cyan-400' },
+            { id: 'spider', icon: 'fa-spider', color: 'bg-slate-900' },
+            { id: 'hippo', icon: 'fa-hippo', color: 'bg-fuchsia-600' },
+            { id: 'frog', icon: 'fa-frog', color: 'bg-green-600' },
+            { id: 'bird', icon: 'fa-crow', color: 'bg-sky-600' },
+            { id: 'horse', icon: 'fa-horse', color: 'bg-amber-800' },
+            { id: 'skull', icon: 'fa-skull', color: 'bg-stone-500' },
+            { id: 'bomb', icon: 'fa-bomb', color: 'bg-red-800' },
+            { id: 'gem', icon: 'fa-gem', color: 'bg-pink-500' },
+            { id: 'bolt', icon: 'fa-bolt', color: 'bg-yellow-400' },
+            { id: 'brain', icon: 'fa-brain', color: 'bg-rose-400' },
+        ];
+
         const BOTS = [
-            { id: 1, name: "Dino", icon: "fa-dragon", color: "text-green-500", gold: 0 },
-            { id: 2, name: "Uni", icon: "fa-horse-head", color: "text-pink-500", gold: 0 },
-            { id: 3, name: "Foxy", icon: "fa-cat", color: "text-orange-500", gold: 0 }, 
-            { id: 4, name: "Alien", icon: "fa-user-astronaut", color: "text-purple-500", gold: 0 },
-            { id: 5, name: "Ghost", icon: "fa-ghost", color: "text-gray-400", gold: 0 },
-            { id: 6, name: "Robot", icon: "fa-robot", color: "text-blue-500", gold: 0 },
-            { id: 7, name: "Ninja", icon: "fa-user-ninja", color: "text-red-500", gold: 0 },
+            { id: 1, name: "Dino", blook: BLOOKS[1], gold: 0 },
+            { id: 2, name: "Uni", blook: BLOOKS[14], gold: 0 },
+            { id: 3, name: "Foxy", blook: BLOOKS[7], gold: 0 }, 
+            { id: 4, name: "Alien", blook: BLOOKS[4], gold: 0 },
+            { id: 5, name: "Ghost", blook: BLOOKS[2], gold: 0 },
+            { id: 6, name: "Robot", blook: BLOOKS[3], gold: 0 },
+            { id: 7, name: "Ninja", blook: BLOOKS[5], gold: 0 },
         ];
 
         // --- VISUAL HELPERS ---
@@ -194,7 +242,8 @@
             }
         };
 
-        // --- SHARED COMPONENTS ---
+        // --- COMPONENTS ---
+
         const Button = ({ children, onClick, color = "primary", size = "md", className = "", disabled = false }) => {
             const colors = {
                 primary: "bg-blue-500 hover:bg-blue-600 border-blue-700 text-white",
@@ -222,6 +271,42 @@
             );
         };
 
+        // Blook Avatar Component
+        const BlookAvatar = ({ blook, size = "md", className = "" }) => {
+            const sizes = {
+                sm: "w-8 h-8 text-sm",
+                md: "w-12 h-12 text-xl",
+                lg: "w-20 h-20 text-4xl",
+                xl: "w-32 h-32 text-6xl"
+            };
+            return (
+                <div className={`${blook.color} ${sizes[size]} blook-avatar ${className}`}>
+                    <i className={`fas ${blook.icon}`}></i>
+                </div>
+            );
+        };
+
+        const ProfileSelector = ({ currentBlook, onSelect, onClose }) => {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-3xl p-6 max-w-4xl w-full border-4 border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-3xl font-black text-slate-700">Choose Your Blook</h2>
+                            <Button size="sm" color="danger" onClick={onClose}>Close</Button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-2 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                            {BLOOKS.map(b => (
+                                <div key={b.id} onClick={() => onSelect(b)} className={`cursor-pointer p-2 rounded-xl border-4 transition-all hover:scale-105 ${currentBlook.id === b.id ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-slate-100'}`}>
+                                    <BlookAvatar blook={b} size="lg" className="mx-auto" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const PlayerSelector = ({ bots, onSelect, title }) => (
             <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl p-6 max-w-3xl w-full animate-fade-in border-4 border-slate-300">
@@ -229,7 +314,7 @@
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {bots.map(b => (
                             <div key={b.id} onClick={() => onSelect(b)} className="cursor-pointer bg-slate-100 hover:bg-blue-100 hover:border-blue-400 border-2 border-slate-200 rounded-xl p-4 flex flex-col items-center transition-colors">
-                                <div className={`text-4xl mb-2 ${b.color}`}><i className={`fas ${b.icon}`}></i></div>
+                                <BlookAvatar blook={b.blook} size="md" className="mb-2" />
                                 <div className="font-bold text-lg">{b.name}</div>
                                 <div className="text-sm font-bold text-amber-600">
                                     {b.gold} {title.includes("Crypto") ? <i className="fas fa-bolt"></i> : <i className="fas fa-coins"></i>}
@@ -244,7 +329,7 @@
 
         // --- SCREENS ---
 
-        const Dashboard = ({ customSets, onSelectSet }) => {
+        const Dashboard = ({ customSets, onSelectSet, userProfile, onEditProfile }) => {
             const allSets = [...PREMADE_SETS, ...customSets];
             const categories = [...new Set(allSets.map(s => s.category || 'Custom'))];
             const [filter, setFilter] = useState('All');
@@ -260,6 +345,21 @@
 
             return (
                 <div className="p-6 max-w-6xl mx-auto w-full game-container">
+                    {/* Profile Card */}
+                    <div className="bg-white rounded-2xl border-4 border-slate-200 p-6 mb-8 flex items-center justify-between shadow-sm hover:border-purple-300 transition-colors cursor-pointer" onClick={onEditProfile}>
+                        <div className="flex items-center gap-4">
+                            <BlookAvatar blook={userProfile.blook} size="lg" />
+                            <div>
+                                <div className="text-xs font-extrabold text-purple-500 uppercase tracking-widest mb-1">
+                                    <i className="fas fa-id-card mr-1"></i> Your Profile
+                                </div>
+                                <h2 className="text-2xl font-black text-slate-700">{userProfile.name}</h2>
+                                <p className="text-slate-400 text-sm font-bold">Click to change Blook</p>
+                            </div>
+                        </div>
+                        <div className="text-purple-500 text-xl"><i className="fas fa-pencil-alt"></i></div>
+                    </div>
+
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-3xl font-black text-slate-700"><i className="fas fa-gamepad mr-2 text-purple-500"></i> Select a Set</h2>
                         <div className="flex gap-2 overflow-x-auto pb-2">
@@ -350,7 +450,7 @@
 
         // --- GAME MODES ---
 
-        const GoldQuest = ({ set, timeLimit, onExit }) => {
+        const GoldQuest = ({ set, timeLimit, userProfile, onExit }) => {
             const [state, setState] = useState('playing');
             const [shuffledQuestions, setShuffledQuestions] = useState([]);
             const [qIndex, setQIndex] = useState(0);
@@ -453,7 +553,7 @@
             };
 
             if (!shuffledQuestions.length) return <div>Loading...</div>;
-            if(state === 'finished') return <GameOver score={gold} type="Gold" onExit={onExit} bots={bots} stats={stats} />;
+            if(state === 'finished') return <GameOver score={gold} type="Gold" onExit={onExit} bots={bots} stats={stats} userProfile={userProfile} />;
 
             return (
                 <div className="bg-amber-300 min-h-screen flex flex-col font-sans">
@@ -497,7 +597,7 @@
                                     {[0, 1, 2].map(i => (
                                         <div key={i} onClick={() => openChest(i)} className={`w-32 h-32 md:w-40 md:h-40 chest-wrapper ${openedChest === i ? 'is-open' : ''}`}>
                                             
-                                            {/* Reward Content Layer (Pops out) */}
+                                            {/* Reward Content Layer */}
                                             {openedChest === i && chestContent && (
                                                 <div className="absolute inset-0 flex flex-col items-center justify-center z-30 animate-pop-up pointer-events-none">
                                                     <div className="text-6xl md:text-7xl mb-2 drop-shadow-lg">
@@ -537,11 +637,12 @@
                     <div className="h-28 bg-slate-900 text-white p-3 overflow-y-auto text-sm">
                         <div className="flex flex-wrap gap-2 justify-center">
                              <div className="bg-amber-500 px-3 py-1 rounded-full font-bold border-b-2 border-amber-700 shadow-sm flex items-center gap-2">
-                                <i className="fas fa-user"></i> YOU: {gold}
+                                <BlookAvatar blook={userProfile.blook} size="sm" /> 
+                                <span>YOU: {gold}</span>
                              </div>
                              {bots.map((b, i) => (
                                  <div key={i} className="bg-slate-700 px-3 py-1 rounded-full text-xs flex items-center gap-1">
-                                    <i className={`fas ${b.icon} ${b.color}`}></i>
+                                    <BlookAvatar blook={b.blook} size="sm" />
                                     <span>{b.name}: {b.gold}</span>
                                  </div>
                              ))}
@@ -551,7 +652,7 @@
             );
         };
 
-        const CryptoHack = ({ set, timeLimit, onExit }) => {
+        const CryptoHack = ({ set, timeLimit, userProfile, onExit }) => {
             const [state, setState] = useState('playing');
             const [shuffledQuestions, setShuffledQuestions] = useState([]);
             const [qIndex, setQIndex] = useState(0);
@@ -637,7 +738,7 @@
             };
 
             if (!shuffledQuestions.length) return <div>Loading...</div>;
-            if(state === 'finished') return <GameOver score={crypto} type="Crypto" onExit={onExit} bots={bots} stats={stats} />;
+            if(state === 'finished') return <GameOver score={crypto} type="Crypto" onExit={onExit} bots={bots} stats={stats} userProfile={userProfile} />;
 
             return (
                 <div className="bg-slate-900 min-h-screen flex flex-col font-mono text-sm">
@@ -688,7 +789,7 @@
             );
         };
 
-        const GameOver = ({ score, type, onExit, bots, stats }) => {
+        const GameOver = ({ score, type, onExit, bots, stats, userProfile }) => {
             const percentage = stats && stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
             const allScores = [...bots.map(b => b.gold), score].sort((a,b) => b - a);
             const rank = allScores.indexOf(score) + 1;
@@ -707,9 +808,11 @@
                             </div>
 
                             <div className="text-left bg-slate-50 p-3 rounded-xl text-sm h-32 overflow-y-auto border-2 border-slate-100">
-                                {[...bots, {name: 'YOU', gold: score, icon: 'fa-user', color: 'text-black'}].sort((a,b) => b.gold - a.gold).map((b, i) => (
-                                    <div key={i} className={`flex justify-between border-b py-2 px-2 last:border-0 ${b.name === 'YOU' ? 'bg-amber-100 font-bold' : ''}`}>
-                                        <span>#{i+1} <i className={`fas ${b.icon} ${b.color || ''} mx-1`}></i> {b.name}</span>
+                                {[...bots, {name: userProfile.name, gold: score, blook: userProfile.blook}].sort((a,b) => b.gold - a.gold).map((b, i) => (
+                                    <div key={i} className={`flex justify-between border-b py-2 px-2 last:border-0 ${b.name === userProfile.name ? 'bg-amber-100 font-bold' : ''}`}>
+                                        <span className="flex items-center gap-2">
+                                            #{i+1} <BlookAvatar blook={b.blook} size="sm"/> {b.name}
+                                        </span>
                                         <span className="font-bold">{b.gold}</span>
                                     </div>
                                 ))}
@@ -814,15 +917,19 @@
             const [activeSet, setActiveSet] = useState(null);
             const [activeMode, setActiveMode] = useState(null); 
             const [timeLimit, setTimeLimit] = useState(5);
+            
+            // User Profile State
+            const [userProfile, setUserProfile] = useState({ name: 'Player', blook: BLOOKS[0] });
+            const [showProfileSelector, setShowProfileSelector] = useState(false);
 
             useEffect(() => {
-                const saved = localStorage.getItem('blockbuster_sets');
-                if(saved) {
-                    try {
-                        setCustomSets(JSON.parse(saved));
-                    } catch(e) {
-                        console.error("Failed to load custom sets", e);
-                    }
+                const savedSets = localStorage.getItem('blockbuster_sets');
+                if(savedSets) {
+                    try { setCustomSets(JSON.parse(savedSets)); } catch(e) {}
+                }
+                const savedProfile = localStorage.getItem('blockbuster_profile');
+                if(savedProfile) {
+                    try { setUserProfile(JSON.parse(savedProfile)); } catch(e) {}
                 }
             }, []);
 
@@ -833,13 +940,27 @@
                 setScreen('dashboard');
             };
 
+            const saveProfile = (blook) => {
+                const newProfile = { ...userProfile, blook: blook };
+                setUserProfile(newProfile);
+                localStorage.setItem('blockbuster_profile', JSON.stringify(newProfile));
+                setShowProfileSelector(false);
+            };
+
             const Navbar = () => (
                 <div className="bg-purple-600 p-4 shadow-lg flex justify-between items-center border-b-4 border-purple-800 sticky top-0 z-50">
                     <div className="flex items-center gap-2 text-white cursor-pointer" onClick={() => { setScreen('dashboard'); setActiveSet(null); }}>
                         <div className="bg-white text-purple-600 p-2 rounded-lg font-black text-xl shadow-md">B</div>
                         <h1 className="text-2xl font-black tracking-wider">BLOCKBUSTER ULT</h1>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-4 items-center">
+                        <div className="cursor-pointer hover:scale-105 transition-transform flex items-center gap-2" onClick={() => setShowProfileSelector(true)}>
+                            <div className="text-right hidden sm:block leading-tight">
+                                <div className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">Profile</div>
+                                <div className="text-white font-bold text-sm">{userProfile.name}</div>
+                            </div>
+                            <BlookAvatar blook={userProfile.blook} size="sm" className="border-2 border-white shadow-md" />
+                        </div>
                         <Button size="sm" color="warning" onClick={() => setScreen('editor')}><i className="fas fa-pen mr-1"></i> Create</Button>
                     </div>
                 </div>
@@ -876,9 +997,13 @@
 
             return (
                 <div className="min-h-screen bg-gray-100 flex flex-col font-sans text-slate-800">
+                    {showProfileSelector && (
+                        <ProfileSelector currentBlook={userProfile.blook} onSelect={saveProfile} onClose={() => setShowProfileSelector(false)} />
+                    )}
+
                     {screen !== 'game' && <Navbar />}
                     
-                    {screen === 'dashboard' && <Dashboard customSets={customSets} onSelectSet={(s) => { setActiveSet(s); setScreen('setup'); }} />}
+                    {screen === 'dashboard' && <Dashboard customSets={customSets} onSelectSet={(s) => { setActiveSet(s); setScreen('setup'); }} userProfile={userProfile} onEditProfile={() => setShowProfileSelector(true)} />}
                     
                     {screen === 'editor' && <Editor onSave={saveCustomSet} onCancel={() => setScreen('dashboard')} />}
                     
@@ -886,9 +1011,9 @@
 
                     {screen === 'mode-select' && <ModeSelect onSelect={(m) => { setActiveMode(m); setScreen('game'); }} />}
 
-                    {screen === 'game' && activeMode === 'gold' && <GoldQuest set={activeSet} timeLimit={timeLimit} onExit={() => setScreen('dashboard')} />}
+                    {screen === 'game' && activeMode === 'gold' && <GoldQuest set={activeSet} timeLimit={timeLimit} userProfile={userProfile} onExit={() => setScreen('dashboard')} />}
                     
-                    {screen === 'game' && activeMode === 'crypto' && <CryptoHack set={activeSet} timeLimit={timeLimit} onExit={() => setScreen('dashboard')} />}
+                    {screen === 'game' && activeMode === 'crypto' && <CryptoHack set={activeSet} timeLimit={timeLimit} userProfile={userProfile} onExit={() => setScreen('dashboard')} />}
                 </div>
             );
         };
