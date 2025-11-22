@@ -85,8 +85,38 @@
 
         const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- DATA LOADING ---
-        // Load premade sets from the external file
+        // --- DATA LOADING & SHUFFLING LOGIC ---
+        
+        // Helper to shuffle an array
+        const shuffleArray = (array) => {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        };
+
+        // Helper to prepare game data: shuffles questions AND answers
+        const prepareGameData = (questions) => {
+            return questions.map(q => {
+                // Get the actual text of the correct answer before shuffling
+                const correctText = q.a[q.correct];
+                
+                // Shuffle the answers array
+                const shuffledAnswers = shuffleArray(q.a);
+                
+                // Find where the correct answer moved to
+                const newCorrectIndex = shuffledAnswers.indexOf(correctText);
+                
+                return {
+                    ...q,
+                    a: shuffledAnswers,
+                    correct: newCorrectIndex
+                };
+            }).sort(() => Math.random() - 0.5); // Also shuffle the order of questions
+        };
+
         const PREMADE_SETS = window.BLOCKBUSTER_DATA || [];
 
         const BOTS = [
@@ -271,9 +301,11 @@
             const [showTargetSelector, setShowTargetSelector] = useState(false);
             const [pendingAction, setPendingAction] = useState(null); // 'swap', 'steal10', 'steal25'
 
-            // Init shuffle
+            // Init shuffle with FULL RANDOMIZATION
             useEffect(() => {
-                setShuffledQuestions([...set.questions].sort(() => Math.random() - 0.5));
+                // This processes the set to shuffle questions AND their answers
+                const preparedSet = prepareGameData(set.questions);
+                setShuffledQuestions(preparedSet);
             }, [set]);
 
             // Timer
@@ -478,9 +510,10 @@
             const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
             const [showTargetSelector, setShowTargetSelector] = useState(false);
 
-            // Init shuffle
+            // Init shuffle with FULL RANDOMIZATION
             useEffect(() => {
-                setShuffledQuestions([...set.questions].sort(() => Math.random() - 0.5));
+                const preparedSet = prepareGameData(set.questions);
+                setShuffledQuestions(preparedSet);
                 generatePasswords();
             }, [set]);
 
@@ -682,23 +715,29 @@
         // --- MAIN APP ---
 
         const Editor = ({ onSave, onCancel }) => {
-             // Reuse previous editor logic simplified for brevity but included for functionality
             const [title, setTitle] = useState("");
             const [desc, setDesc] = useState("");
             const [questions, setQuestions] = useState([]);
             const [qText, setQText] = useState("");
-            const [a1, setA1] = useState("");
+            const [a1, setA1] = useState(""); // Intended correct
             const [a2, setA2] = useState("");
             const [a3, setA3] = useState("");
             const [a4, setA4] = useState("");
 
             const addQuestion = () => {
                 if(!qText || !a1 || !a2) return alert("Question + 2 answers min");
+                
+                // For storage, we just save them as is. The GAME ENGINE will shuffle them later.
+                // But to be safe for the 'correct' index logic, we can store them straight
+                // and let the engine handle the display shuffle.
+                
+                // However, traditionally we want to store them so the Creator knows a1 is correct.
+                // So we store: q: text, a: [correct, wrong1, wrong2...], correct: 0
+                // The game engine's 'prepareGameData' will shuffle this at runtime.
+                
                 const rawAnswers = [a1, a2, a3, a4].filter(a => a);
-                const correctText = a1;
-                let shuffled = [...rawAnswers].sort(() => Math.random() - 0.5);
-                const correctIndex = shuffled.indexOf(correctText);
-                setQuestions([...questions, { q: qText, a: shuffled, correct: correctIndex }]);
+                
+                setQuestions([...questions, { q: qText, a: rawAnswers, correct: 0 }]);
                 setQText(""); setA1(""); setA2(""); setA3(""); setA4("");
             };
 
@@ -713,15 +752,32 @@
                         <input className="w-full p-3 text-md border-2 border-slate-300 rounded-lg" placeholder="Description" value={desc} onChange={e => setDesc(e.target.value)} />
                     </div>
                     <div className="bg-slate-50 p-6 rounded-xl border-2 border-slate-200 mb-8">
-                         <input className="w-full p-3 mb-3 border-2 border-slate-300 rounded-lg" placeholder="Question" value={qText} onChange={e => setQText(e.target.value)} />
+                         <input className="w-full p-3 mb-3 border-2 border-slate-300 rounded-lg" placeholder="Question Text" value={qText} onChange={e => setQText(e.target.value)} />
                          <div className="grid grid-cols-2 gap-3">
-                            <input className="p-3 border-2 border-green-300 bg-green-50 rounded-lg" placeholder="Correct Answer" value={a1} onChange={e => setA1(e.target.value)} />
-                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer" value={a2} onChange={e => setA2(e.target.value)} />
-                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer" value={a3} onChange={e => setA3(e.target.value)} />
-                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer" value={a4} onChange={e => setA4(e.target.value)} />
+                            <div className="relative">
+                                <input className="w-full p-3 border-2 border-green-400 bg-green-50 rounded-lg" placeholder="Correct Answer" value={a1} onChange={e => setA1(e.target.value)} />
+                                <span className="absolute right-3 top-3 text-green-600 text-xs font-bold">CORRECT</span>
+                            </div>
+                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer 1" value={a2} onChange={e => setA2(e.target.value)} />
+                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer 2 (Opt)" value={a3} onChange={e => setA3(e.target.value)} />
+                            <input className="p-3 border-2 border-slate-300 rounded-lg" placeholder="Wrong Answer 3 (Opt)" value={a4} onChange={e => setA4(e.target.value)} />
                         </div>
-                        <Button color="purple" className="mt-4" onClick={addQuestion}>Add Q</Button>
+                        <div className="mt-2 text-xs text-slate-400 italic text-center">Note: Answers will be shuffled automatically during the game.</div>
+                        <Button color="purple" className="mt-4 w-full" onClick={addQuestion}>Add Question</Button>
                     </div>
+                    
+                    <div className="mb-4">
+                        <h3 className="font-bold text-slate-500 mb-2">{questions.length} Questions Added</h3>
+                        <div className="max-h-40 overflow-y-auto border-2 border-slate-100 rounded-lg p-2">
+                            {questions.map((q, i) => (
+                                <div key={i} className="text-sm border-b py-1 last:border-0 flex justify-between">
+                                    <span>{i+1}. {q.q}</span>
+                                    <span className="text-green-600 font-bold">{q.a[0]}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     <Button color="success" className="w-full" onClick={() => onSave({ id: Date.now(), title, desc, questions, category: 'Custom' })}>Save Set</Button>
                 </div>
             );
@@ -733,6 +789,25 @@
             const [activeSet, setActiveSet] = useState(null);
             const [activeMode, setActiveMode] = useState(null); // 'gold', 'crypto'
             const [timeLimit, setTimeLimit] = useState(5);
+
+            // Load custom sets from local storage on mount
+            useEffect(() => {
+                const saved = localStorage.getItem('blockbuster_sets');
+                if(saved) {
+                    try {
+                        setCustomSets(JSON.parse(saved));
+                    } catch(e) {
+                        console.error("Failed to load custom sets", e);
+                    }
+                }
+            }, []);
+
+            const saveCustomSet = (newSet) => {
+                const updated = [...customSets, newSet];
+                setCustomSets(updated);
+                localStorage.setItem('blockbuster_sets', JSON.stringify(updated));
+                setScreen('dashboard');
+            };
 
             // Navbar
             const Navbar = () => (
@@ -778,7 +853,7 @@
                     
                     {screen === 'dashboard' && <Dashboard customSets={customSets} onSelectSet={(s) => { setActiveSet(s); setScreen('setup'); }} />}
                     
-                    {screen === 'editor' && <Editor onSave={(s) => { setCustomSets([...customSets, s]); setScreen('dashboard'); }} onCancel={() => setScreen('dashboard')} />}
+                    {screen === 'editor' && <Editor onSave={saveCustomSet} onCancel={() => setScreen('dashboard')} />}
                     
                     {screen === 'setup' && <SetupGame set={activeSet} onBack={() => setScreen('dashboard')} onStart={(t) => { setTimeLimit(t); setScreen('mode-select'); }} />}
 
