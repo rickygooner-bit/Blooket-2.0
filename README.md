@@ -1,4 +1,4 @@
-# Blooket Clone (Open‑Source)
+# Crappy Blooket Clone (Open‑Source)
 
 A free, fully open‑source remake of **Blooket**, built for anyone who wants to host, modify, or learn from a live quiz‑game platform. This project is still in **beta**, so expect rapid updates and occasional rough edges.
 
